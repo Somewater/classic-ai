@@ -1,5 +1,5 @@
 from typing import NamedTuple, Iterator, List
-from my.utils import get_cyrillic_lines, get_cyrillic_words, get_lines
+from my.utils import get_cyrillic_lines, get_cyrillic_words, get_lines, MakeIter
 from collections import namedtuple
 
 class ContentBase(object):
@@ -56,3 +56,18 @@ class WikiPage(ContentBase, namedtuple('WikiPage', ['id', 'parentid', 'title', '
 
     def __repr__(self):
         return self.__str__()
+
+class WikiPage2(NamedTuple):
+    id: int
+    parentid: int
+    title: str
+    words: List[str]
+
+    def __str__(self):
+        return "WikiPage(title=%s, words=%s)" % (self.title, ' '.join(self.words[:5]))
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __iter__(self):
+        return iter(self.words)

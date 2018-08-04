@@ -1,5 +1,7 @@
 from typing import List, Iterator
 import re
+from nltk.stem.snowball import RussianStemmer
+from pymystem3 import Mystem
 
 def is_cyrillic(char: str) -> bool:
     o = ord(char)
@@ -19,6 +21,9 @@ AllowedPunctuation = set([' ', '.', ',', ';', '!', '?', ':', '…', '«', '»', 
                           SPACE1, SPACE2, '*', '‹', '›', '|'])
 WebCharPattern = re.compile('&(#\d{1,4}|\w{1,4});')
 ManySpaces = re.compile('\s+')
+rus_stemmer = RussianStemmer()
+rus_lemmatizer = Mystem()
+#rus_lemmatizer.start()
 
 def get_lines(content: str) -> Iterator[str]:
     for line in content.splitlines():
@@ -93,3 +98,22 @@ def get_cyrillic_words(line: str) -> List[str]:
         append_word(words, word_chars, wrong_word)
 
     return words
+
+def stem(word: str) -> str:
+    return rus_stemmer.stem(word)
+
+def lemma(word: str) -> str:
+    for w in rus_lemmatizer.lemmatize(word):
+        return w
+    return word
+
+class MakeIter(object):
+    def __init__(self, generator_func, **kwargs):
+        self.generator_func = generator_func
+        self.kwargs = kwargs
+    def __iter__(self):
+        return self.generator_func(**self.kwargs)
+
+def group_by_n(l, n):
+    for i in range(0, len(l), n):
+        yield l[i:i+n]

@@ -15,4 +15,6 @@ with open("images/sberbank-python/pip_freeze.txt") as f:
             os.system("pip install %s" % l)
 '
 
-wget https://dumps.wikimedia.org/ruwiki/latest/ruwiki-latest-pages-articles-multistream.xml.bz2 -O data/ruwiki-latest-pages-articles-multistream.xml.bz2
+cd data
+wget https://dumps.wikimedia.org/ruwiki/latest/ruwiki-latest-pages-articles-multistream.xml.bz2 -O ruwiki-latest-pages-articles-multistream.xml.bz2
+wget https://raw.githubusercontent.com/mhq/train_punkt/master/russian.pickle

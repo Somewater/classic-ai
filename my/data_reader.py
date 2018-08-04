@@ -1,9 +1,11 @@
-from typing import List, Iterator
+from typing import List, Iterator, Set
 from my.model import *
+from my.utils import stem, lemma
 import os
 import json
 import bz2
 from lxml import etree
+import csv
 
 class DataReader:
     def read_classic_poems(self) -> List[Poem]:
@@ -56,3 +58,29 @@ class DataReader:
                         elif tag == 'text':
                             tag_text = element.text
                     element.clear()
+
+    def read_wikipedia_pages2(self,
+                              stemming: bool = False,
+                              lemmaatazing: bool = False) -> Iterator[WikiPage2]:
+        csv.field_size_limit(2 ** 31)
+        with open(os.path.join('data', 'wiki_pages.csv')) as csvfile:
+            reader = csv.reader(csvfile, delimiter='\t')
+            next(reader) # skip header
+            for row in reader:
+                id = int(row[0])
+                parentid = None
+                if row[1] != 'None':
+                    parentid = int(row[1])
+                title = row[2]
+                words = row[3].split(',')
+                if stemming:
+                    words = [stem(w) for w in words]
+                if lemmaatazing:
+                    words = [lemma(w) for w in words]
+                yield WikiPage2(id, parentid, title, words)
+
+    def read_stop_words(self) -> Set[str]:
+        result = None
+        with open(os.path.join('data', 'stop_words.csv')) as f:
+            result = [l for l in f.readlines() if l]
+        return set(result)
