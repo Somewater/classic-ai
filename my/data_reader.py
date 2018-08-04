@@ -26,12 +26,12 @@ class DataReader:
             tag_parent_id = None
             tag_title = None
             tag_text = None
-            system_page = False
+            skip_page = False
             namespace = '{http://www.mediawiki.org/xml/export-0.10/}'
             for event, element in etree.iterparse(f,
                                                   events=('start', 'end'),
                                                   tag=(namespace + 'page', namespace + 'id', namespace + 'parentid',
-                                                       namespace + 'title', namespace + 'text'),
+                                                       namespace + 'title', namespace + 'text', namespace + 'redirect'),
                                                   encoding='utf-8'):
                 # print(' %s/%s' % (repr(event), repr(tag)))
                 tag = element.tag.replace(namespace, '')
@@ -42,21 +42,23 @@ class DataReader:
                         tag_parent_id = None
                         tag_title = None
                         tag_text = None
-                        system_page = False
+                        skip_page = False
                 elif event == 'end':
                     if tag == 'page':
-                        if tag_text:
+                        if tag_text and not skip_page:
                             yield WikiPage(tag_id, tag_parent_id, tag_title, content=tag_text)
-                    elif not system_page:
+                    elif not skip_page:
                         if tag == 'id':
                             tag_id = int(element.text)
                         elif tag == 'parentid':
                             tag_parent_id = int(element.text)
                         elif tag == 'title':
                             tag_title = element.text
-                            system_page = ':' in tag_title
+                            skip_page = ':' in tag_title
                         elif tag == 'text':
                             tag_text = element.text
+                        elif tag == 'redirect':
+                            skip_page = True
                     element.clear()
 
     def read_wikipedia_pages2(self,
