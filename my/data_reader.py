@@ -6,6 +6,9 @@ import json
 import bz2
 from lxml import etree
 import csv
+import re
+
+BigLetters = re.compile('[A-Z]+')
 
 class DataReader:
     def read_classic_poems(self) -> List[Poem]:
@@ -16,8 +19,72 @@ class DataReader:
                 poems.append(poem)
         return poems
 
-    def read_opcorpora(self) -> Iterator[str]:
-        pass
+    def read_opcorpora(self, ignore_gs: bool = True) -> Iterator[OpCorpText]:
+        with bz2.open(os.path.join('data', 'annot.opcorpora.xml.bz2')) as f:
+            tag_text_id = None
+            tag_text_title = None
+            tag_text_paragraphs = None
+            tag_paragraph_sentenses = None
+            tag_sentense_id = None
+            tag_sentense_source = None
+            tag_sentense_tokens = None
+            tag_token_id = None
+            tag_token_text = None
+            tag_token_gs = None
+
+            for event, element in etree.iterparse(f, events=('start', 'end'), encoding='utf-8'):
+                tag = element.tag
+                if event == 'start':
+                    if tag == 'text':
+                        tag_text_id = int(element.attrib['id'])
+                        tag_text_title = element.attrib['name']
+                        tag_text_paragraphs = None
+                        tag_paragraph_sentenses = None
+                        tag_sentense_id = None
+                        tag_sentense_source = None
+                        tag_sentense_tokens = None
+                        tag_token_id = None
+                        tag_token_text = None
+                        tag_token_gs = None
+                    elif tag == 'paragraphs':
+                        tag_text_paragraphs = []
+                    elif tag == 'paragraph':
+                        tag_paragraph_sentenses = []
+                    elif tag == 'sentence':
+                        tag_sentense_id = int(element.attrib['id'])
+                    elif tag == 'tokens':
+                        tag_sentense_tokens = []
+                    elif tag == 'token':
+                        tag_token_id = int(element.attrib['id'])
+                        tag_token_text = element.attrib['text']
+                    elif tag == 'tfr':
+                        tag_token_gs = []
+                elif event == 'end':
+                    if tag == 'source':
+                        tag_sentense_source = element.text
+                    elif tag == 'g':
+                        tag_token_gs.append(element.attrib['v'])
+                    elif tag == 'token':
+                        pos = [g for g in tag_token_gs if BigLetters.fullmatch(g)]
+                        if pos:
+                            pos = pos[0]
+                        else:
+                            pos = None
+                        if ignore_gs:
+                            tag_token_gs = None
+                        tag_sentense_tokens.append(OpCorpToken(tag_token_id, tag_token_text, tag_token_gs, pos))
+                        tag_token_gs = None
+                    elif tag == 'sentence':
+                        tag_paragraph_sentenses.append(OpCorpSentence(tag_sentense_id, tag_sentense_source, tag_sentense_tokens))
+                        tag_sentense_tokens = None
+                    elif tag == 'paragraph':
+                        tag_text_paragraphs.append(OpCorpParagraph(tag_paragraph_sentenses))
+                        tag_paragraph_sentenses = None
+                    elif tag == 'text':
+                        if tag_text_paragraphs:
+                            yield OpCorpText(tag_text_id, tag_text_title, tag_text_paragraphs)
+                        tag_text_paragraphs = None
+                    element.clear()
 
     def read_wikipedia_pages(self) -> Iterator[WikiPage]:
         with bz2.open(os.path.join('data', 'ruwiki-latest-pages-articles-multistream.xml.bz2')) as f:
@@ -86,3 +153,9 @@ class DataReader:
         with open(os.path.join('data', 'stop_words.csv')) as f:
             result = [l for l in f.readlines() if l]
         return set(result)
+
+    def get_tmp_filepath(self, filename: str = None):
+        if filename:
+            return os.path.join('tmp', filename)
+        else:
+            return os.path.join('tmp')

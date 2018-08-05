@@ -1,7 +1,6 @@
 #!/bin/bash
 
 BASEDIR=$(pwd)
-ln -s $BASEDIR/data $BASEDIR/my/data
 
 conda create -n sber2
 source activate sber2
