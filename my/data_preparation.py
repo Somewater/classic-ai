@@ -102,9 +102,9 @@ def process_wiki_pages_stems_chunk(input_filepath, output_filepath, start, end, 
             i = 0
             for line in f:
                 pageid, parentid, title, words = line.split('\t')
-                stems = [stem_cb(w) for w in words.strip().split(',') if not w in stop_words and len(w) > 2]
-                # stems = words.strip().split(',')[:5]
-                if len(stems) >= min_stems:
+                words = [w for w in words.strip().split(',') if not w in stop_words and len(w) > 2]
+                if len(words) >= min_stems:
+                    stems = [stem_cb(w) for w in words]
                     writer.writerow([pageid, parentid, title, ','.join(stems[:max_stems])])
                 i += 1
                 if i % 10000 == 0:
