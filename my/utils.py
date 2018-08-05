@@ -107,6 +107,11 @@ def lemma(word: str) -> str:
         return w
     return word
 
+def lemm_or_stem(word: str) -> str:
+    for w in rus_lemmatizer.lemmatize(word):
+        return w
+    return rus_stemmer.stem(word)
+
 class MakeIter(object):
     def __init__(self, generator_func, **kwargs):
         self.generator_func = generator_func

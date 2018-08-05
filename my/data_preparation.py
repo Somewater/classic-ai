@@ -3,7 +3,7 @@ import os
 import csv
 from collections import Counter
 import multiprocessing as mp
-from my.utils import group_by_n, stem, lemma
+from my.utils import group_by_n, stem, lemma, lemm_or_stem
 import math
 
 class WikiPagePreparator:
@@ -85,6 +85,8 @@ class WikiPagePreparator:
 def process_wiki_pages_stems_chunk(input_filepath, output_filepath, start, end, lines, stem_name):
     print("I should read %d-%d and write to %s" % (start, end, output_filepath))
     stem_cb = None
+    if 'lemm' in stem_name and 'stem' in stem_name:
+        stem_cb = lemm_or_stem
     if 'stem' in stem_name:
         stem_cb = stem
     elif 'lemm' in stem_name:
