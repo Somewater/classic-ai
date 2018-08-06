@@ -130,9 +130,10 @@ class DataReader:
 
     def read_wikipedia_pages2(self,
                               stemming: bool = False,
-                              lemmaatazing: bool = False) -> Iterator[WikiPage2]:
+                              lemmaatazing: bool = False,
+                              filename: str = 'wiki_pages.csv') -> Iterator[WikiPage2]:
         csv.field_size_limit(2 ** 31)
-        with open(os.path.join('data', 'wiki_pages.csv')) as csvfile:
+        with open(os.path.join('data', filename)) as csvfile:
             reader = csv.reader(csvfile, delimiter='\t')
             next(reader) # skip header
             for row in reader:
@@ -159,3 +160,14 @@ class DataReader:
             return os.path.join('tmp', filename)
         else:
             return os.path.join('tmp')
+
+class OpCorpus(Corpus):
+    def __init__(self, reader: DataReader):
+        super().__init__('opcorpora', reader.read_opcorpora)
+
+class WikiCorpus(Corpus):
+    def __init__(self, reader: DataReader, type: str = ''):
+        filename = 'wiki_pages.csv'
+        if type:
+            filename = 'wiki_pages_%s.csv' % type
+        super().__init__('wiki_corpus', reader.read_wikipedia_pages2, False, False, filename)

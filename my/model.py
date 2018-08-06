@@ -10,11 +10,30 @@ class Topic(object):
         return self.words
 
 class Corpus(object):
+    def __init__(self, name, topic_iterator_factory, *args, **kwargs):
+        self.topic_iterator_factory = topic_iterator_factory
+        self.topic_iterator_factory_args = args
+        self.topic_iterator_factory_kwargs = kwargs
+        self._topics_cache = None
+        self._name = name
+
     def name(self):
-        pass
+        return self._name
 
     def get_topics(self) -> Iterator[Topic]:
-        pass
+        if self._topics_cache is None:
+            return self.topic_iterator_factory(*self.topic_iterator_factory_args, **self.topic_iterator_factory_kwargs)
+        else:
+            return self._topics_cache
+
+    def load_to_memory(self):
+        self._topics_cache = self.get_topics()
+
+    def __repr__(self):
+        return "Corpus(%s)" % self.name()
+
+    def __str__(self):
+        return self.__repr__()
 
 class ContentBase(Topic):
     title: str
@@ -59,6 +78,7 @@ class PoemResult(NamedTuple):
     def content(self):
         return '\n'.join(self.lines)
 
+# read from wikipedia xml dump
 class WikiPage(ContentBase, namedtuple('WikiPage', ['id', 'parentid', 'title', 'content'])):
     id: int
     parentid: int
@@ -71,6 +91,7 @@ class WikiPage(ContentBase, namedtuple('WikiPage', ['id', 'parentid', 'title', '
     def __repr__(self):
         return self.__str__()
 
+# read from prepared CSV file
 class WikiPage2(NamedTuple, Topic):
     id: int
     parentid: int
@@ -78,7 +99,7 @@ class WikiPage2(NamedTuple, Topic):
     words: List[str]
 
     def __str__(self):
-        return "WikiPage(title=%s, words=%s)" % (self.title, ' '.join(self.words[:5]))
+        return "WikiPage2(title=%s, words=%s)" % (self.title, ' '.join(self.words[:5]))
 
     def __repr__(self):
         return self.__str__()
@@ -116,20 +137,3 @@ class OpCorpToken(NamedTuple):
     text: str
     gs: List[str]
     pos: str # part of speech
-
-class OpCorpus(Corpus):
-    def __init__(self, reader):
-        self.reader = reader
-        self._topics = None
-
-    def name(self):
-        return 'opcorpora'
-
-    def get_topics(self) -> Iterator[Topic]:
-        if self._topics is None:
-            return self.reader.read_opcorpora()
-        else:
-            return self._topics
-
-    def load_to_memory(self):
-        self._topics = list(self.reader.read_opcorpora())
