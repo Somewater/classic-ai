@@ -20,7 +20,7 @@ class CorpusW2v(object):
             if stemm:
                 tokens = [stem(w) for w in tokens]
             i += 1
-            if i % 1000 == 0: print(i, 'topics iterated')
+            #if i % 100000 == 0: print(i, 'topics iterated')
             yield tokens
 
     def train(self):
