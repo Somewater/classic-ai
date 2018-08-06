@@ -62,6 +62,10 @@ class Poet(NamedTuple):
             cls._by_poet_id[poet_id] = Poet(poet_id)
         return cls._by_poet_id[poet_id]
 
+    @classmethod
+    def all(cls):
+        return list(cls._by_poet_id.values())
+
 class Poem(ContentBase, namedtuple('WikiPage', ['poet', 'title', 'content'])):
     poet: Poet
     title: str
@@ -70,13 +74,32 @@ class Poem(ContentBase, namedtuple('WikiPage', ['poet', 'title', 'content'])):
 class PoemRequest(NamedTuple):
     poet: Poet
     seed: str
+    def get_title(self) -> str:
+        return self.seed
+
+    def get_cyrillic_words(self) -> Iterator[str]:
+        return get_cyrillic_words(self.seed.lower())
 
 class PoemResult(NamedTuple):
     request: PoemRequest
+    source: Poem
     lines: List[str]
 
     def content(self):
         return '\n'.join(self.lines)
+
+    def __repr__(self):
+        s = 'PoemResult(request=%s\n' % repr(self.request)
+        for line in get_lines(self.source.content):
+            s += '\t' + line + '\n'
+        s += '>>>\n'
+        for line in self.lines:
+            s += '\t' + line + '\n'
+        s += ')\n'
+        return s
+
+    def __str__(self):
+        return self.__repr__()
 
 # read from wikipedia xml dump
 class WikiPage(ContentBase, namedtuple('WikiPage', ['id', 'parentid', 'title', 'content'])):

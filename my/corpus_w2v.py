@@ -1,3 +1,5 @@
+from typing import Callable
+
 from my.model import *
 from gensim.models import Word2Vec, FastText
 from my import DataReader
@@ -32,5 +34,18 @@ class CorpusW2v(object):
     def load(self):
         self.model = Word2Vec.load(self.model_filepath)
 
+    def find_similar_words(self, words: List[str], stemmer: Callable[[str], str] = None) -> Iterator[str]:
+        word_in_corpus = []
+        for word in words:
+            if stemmer:
+                word = stemmer(word)
+            if word in self.model.wv:
+                word_in_corpus.append(word)
+        if word_in_corpus:
+            for w, score in self.model.wv.most_similar(positive=word_in_corpus, topn=1000):
+                yield w
+        #return .most_similar(positive=[])
+
+    @staticmethod
     def create_fasttext_model(self):
         return FastText.load_fasttext_format(os.path.join('data', 'fasttext', 'ru'))

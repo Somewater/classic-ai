@@ -8,9 +8,9 @@ import logging
 
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 
-generator = Generator1(logging.getLogger('generator'))
+reader = DataReader()
+generator = Generator1(logging.getLogger('generator'), reader)
 generator.start()
-reader = generator.reader
 preparator = WikiPagePreparator()
 
 corpus = OpCorpus(reader)
