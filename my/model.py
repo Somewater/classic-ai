@@ -92,7 +92,7 @@ class WikiPage(ContentBase, namedtuple('WikiPage', ['id', 'parentid', 'title', '
         return self.__str__()
 
 # read from prepared CSV file
-class WikiPage2(NamedTuple, Topic):
+class WikiPage2(namedtuple('WikiPage2', ['id', 'parentid', 'title', 'words']), Topic):
     id: int
     parentid: int
     title: str
