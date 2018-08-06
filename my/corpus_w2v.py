@@ -26,7 +26,7 @@ class CorpusW2v(object):
     def train(self):
         self.model = Word2Vec(size=100, window=5, min_count=5, workers=4)
         self.model.build_vocab(self.sentences())
-        self.model.train(self.sentences(), total_examples=self.model.corpus_count, epochs=5)
+        self.model.train(self.sentences(), total_examples=self.model.corpus_count, epochs=self.model.iter)
         self.model.save(self.model_filepath)
 
     def load(self):
