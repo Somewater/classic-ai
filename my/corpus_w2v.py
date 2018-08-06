@@ -1,7 +1,8 @@
 from my.model import *
-from gensim.models import Word2Vec
+from gensim.models import Word2Vec, FastText
 from my import DataReader
 from my.utils import stem, lemma
+import os
 
 class CorpusW2v(object):
     def __init__(self, corpus: Corpus, reader: DataReader):
@@ -30,3 +31,6 @@ class CorpusW2v(object):
 
     def load(self):
         self.model = Word2Vec.load(self.model_filepath)
+
+    def create_fasttext_model(self):
+        return FastText.load_fasttext_format(os.path.join('data', 'fasttext', 'ru'))
