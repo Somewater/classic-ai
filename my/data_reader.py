@@ -150,9 +150,12 @@ class DataReader:
                 yield WikiPage2(id, parentid, title, words)
 
     def read_stop_words(self) -> Set[str]:
-        result = None
+        result = []
         with open(os.path.join('data', 'stop_words.csv')) as f:
-            result = [l for l in f.readlines() if l]
+            for l in f.readlines():
+                l = l.strip()
+                if l:
+                    result.append(l)
         return set(result)
 
     def get_tmp_filepath(self, filename: str = None):
