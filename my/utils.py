@@ -122,3 +122,26 @@ class MakeIter(object):
 def group_by_n(l, n):
     for i in range(0, len(l), n):
         yield l[i:i+n]
+
+def levenshtein_distance(s1: str, s2: str):
+    if s1 == s2:
+        return 0
+    rows = len(s1)+1
+    cols = len(s2)+1
+
+    if not s1:
+        return cols-1
+    if not s2:
+        return rows-1
+
+    prev = None
+    cur = range(cols)
+    for r in range(1, rows):
+        prev, cur = cur, [r] + [0]*(cols-1)
+        for c in range(1, cols):
+            deletion = prev[c] + 1
+            insertion = cur[c-1] + 1
+            edit = prev[c-1] + (0 if s1[r-1] == s2[c-1] else 1)
+            cur[c] = min(edit, deletion, insertion)
+
+    return cur[-1]

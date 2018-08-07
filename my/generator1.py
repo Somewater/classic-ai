@@ -3,9 +3,9 @@ from typing import Dict, List, Iterator, Callable
 
 from my import DataReader, Poem, Poet, PoemResult, PoemRequest, CorpusW2v, WikiCorpus,\
     get_cyrillic_lines, get_cyrillic_words, lemma
+from my.utils import levenshtein_distance
 from collections import defaultdict
 from random import choice
-from jellyfish import levenshtein_distance
 import json
 import os
 
