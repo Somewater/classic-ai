@@ -1,4 +1,4 @@
-from typing import List, Iterator, Set
+from typing import List, Iterator, Set, Dict
 from my.model import *
 from my.utils import stem, lemma
 import os
@@ -160,6 +160,21 @@ class DataReader:
             return os.path.join('tmp', filename)
         else:
             return os.path.join('tmp')
+
+    def load_word_count(self, filepath: str = 'data/word_count.csv') -> Dict[str, int]:
+        wc = dict()
+        with open(filepath) as file:
+            for line in file:
+                cnt = int(line[:10])
+                text = line[11:].strip()
+                wc[text] = cnt
+        return wc
+
+    def save_word_count(self, wc: Dict[str, int], filepath: str = 'data/word_count.csv'):
+        with open(filepath, 'w') as file:
+            for w, c in sorted(wc.items(), key=lambda x: (-x[1], x[0].lower())):
+                line = "%10.d %s\n" % (c, w)
+                file.write(line)
 
 class OpCorpus(Corpus):
     def __init__(self, reader: DataReader):

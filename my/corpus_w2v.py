@@ -34,6 +34,7 @@ class CorpusW2v(object):
 
     def load(self):
         self.model = Word2Vec.load(self.model_filepath)
+        self.model.init_sims(replace=True)
 
     def find_similar_words(self, words: List[str], stemmer: Callable[[str], str] = None) -> Iterator[str]:
         word_in_corpus = []
