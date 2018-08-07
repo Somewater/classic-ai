@@ -5,6 +5,7 @@ from gensim.models import Word2Vec, FastText
 from my import DataReader
 from my.utils import stem, lemma
 import os
+from gensim.corpora import WikiCorpus
 
 class CorpusW2v(object):
     def __init__(self, corpus: Corpus, reader: DataReader):
@@ -12,6 +13,7 @@ class CorpusW2v(object):
         self.reader = reader
         self.stop_words = reader.read_stop_words()
         self.model_filepath = self.reader.get_tmp_filepath(self.corpus.name() + '_w2v.bin')
+        self.model = Word2Vec(size=100, window=5, min_count=5, workers=4)
 
     def sentences(self, stemm: bool = False, lemmatize: bool = False) -> Iterator[Iterator[str]]:
         i = 0
@@ -26,7 +28,6 @@ class CorpusW2v(object):
             yield tokens
 
     def train(self):
-        self.model = Word2Vec(size=100, window=5, min_count=5, workers=4)
         self.model.build_vocab(self.sentences())
         self.model.train(self.sentences(), total_examples=self.model.corpus_count, epochs=self.model.iter)
         self.model.save(self.model_filepath)
