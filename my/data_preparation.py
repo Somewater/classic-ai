@@ -1,4 +1,4 @@
-from my import DataReader
+from my import *
 import os
 import csv
 from collections import Counter
@@ -81,6 +81,28 @@ class WikiPagePreparator:
                         if i % 10000 == 0:
                             print('Merge file %s: %d rows' % (job_filepath, i))
                 os.unlink(job_filepath)
+
+    def prepare_topic_checks(self, reader: DataReader, helper: DataHelper):
+        check_corpus = SCTM.corpus(reader.read_sctm())
+        topics = [topic for topic, ts in check_corpus.items()]
+        raw_docs = [helper.get_lemms([w for t in ts for w in t.words]) for topic, ts in check_corpus.items()]
+        topic_words = dict()
+        for i, blob in enumerate(raw_docs):
+            topic = topics[i]
+            print("Top words in document {}".format(i + 1))
+            scores = {word: DataHelper.tfidf(word, blob, raw_docs) for word in blob}
+            sorted_words = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+            topic_words[topic] = list()
+            for word, score in sorted_words:
+                print("\tWord: {}, TF-IDF: {}".format(word, round(score, 5)))
+                topic_words[topic].append((word, score))
+        if not os.path.isdir(os.path.join('data', 'topics')):
+            os.mkdir(os.path.join('data', 'topics'))
+        for topic, words in topic_words.items():
+            with open(os.path.join('data', 'topics', topic + '.txt'), 'w') as f:
+                for w, _ in words:
+                    f.write(w + '\n')
+
 
 def process_wiki_pages_stems_chunk(input_filepath, output_filepath, start, end, lines, stem_name):
     print("I should read %d-%d and write to %s" % (start, end, output_filepath))

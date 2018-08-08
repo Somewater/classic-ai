@@ -1,4 +1,4 @@
-from typing import List, Iterator, Set, Dict
+from typing import List, Iterator, Set, Dict, Tuple
 from my.model import *
 from my.utils import stem, lemma
 import os
@@ -7,6 +7,7 @@ import bz2
 from lxml import etree
 import csv
 import re
+from collections import defaultdict
 
 BigLetters = re.compile('[A-Z]+')
 
@@ -180,20 +181,33 @@ class DataReader:
                 file.write(line)
 
     def read_sctm(self) -> Iterator[SCTM]:
-        with open(os.path.join('data', 'SCTMru.xml')) as f:
+        with open(os.path.join('data', 'SCTMru.xml'), 'rb') as f:
             tag_id = None
             tag_title = None
             tag_text = None
-            tag_categories = None
+            tag_categories = []
             for event, element in etree.iterparse(f,
-                                                  events=('start', 'end'),
+                                                  events=('end',),
                                                   tag=('page', 'id', 'title', 'text', 'category'),
                                                   encoding='utf-8'):
                 tag = element.tag
-                if event == 'start':
-                    pass
-                elif event == 'end'
-                    element.clear()
+                if tag == 'title':
+                    tag_title = element.text
+                elif tag == 'id':
+                    tag_id = int(element.text)
+                elif tag == 'text':
+                    tag_text = element.text
+                elif tag == 'category':
+                    tag_categories.append(element.text)
+                elif tag == 'page':
+                    if tag_text:
+                        words = get_cyrillic_words(tag_text.lower())
+                        yield SCTM(tag_id, tag_title, tag_categories, words)
+                        tag_categories = []
+                        tag_id = None
+                        tag_title = None
+                        tag_text = None
+                element.clear()
 
 class OpCorpus(Corpus):
     def __init__(self, reader: DataReader):

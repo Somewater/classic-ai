@@ -103,8 +103,13 @@ def stem(word: str) -> str:
     return rus_stemmer.stem(word)
 
 def lemma(word: str) -> str:
-    for w in rus_lemmatizer.lemmatize(word):
-        return w
+    try:
+        for w in rus_lemmatizer.lemmatize(word):
+            return w
+    except BrokenPipeError:
+        rus_lemmatizer.start()
+        for w in rus_lemmatizer.lemmatize(word):
+            return w
     return word
 
 def lemm_or_stem(word: str) -> str:

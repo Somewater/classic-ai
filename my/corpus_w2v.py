@@ -1,5 +1,7 @@
-from typing import Callable
+from sklearn.feature_extraction.text import TfidfVectorizer
+from typing import Callable, Tuple, Set, Dict
 
+from my import DataHelper
 from my.model import *
 from gensim.models import Word2Vec, FastText
 from my import DataReader
@@ -14,6 +16,7 @@ class CorpusW2v(object):
         self.stop_words = reader.read_stop_words()
         self.model_filepath = self.reader.get_tmp_filepath(self.corpus.name() + '_w2v.bin')
         self.model = Word2Vec(size=100, window=5, min_count=5, workers=4)
+        self.helper = DataHelper(reader)
 
     def sentences(self, stemm: bool = False, lemmatize: bool = False) -> Iterator[Iterator[str]]:
         i = 0
@@ -47,6 +50,15 @@ class CorpusW2v(object):
             for w, score in self.model.wv.most_similar(positive=word_in_corpus, topn=1000):
                 yield w
         #return .most_similar(positive=[])
+
+    def accuracy(self, check_corpus: Dict[str, List[Topic]]):
+        #  TODO
+        tfidf = TfidfVectorizer(stop_words=self.reader.read_stop_words())
+        raw_docs = [" ".join(self.helper.get_lemms(t)) for ts in check_corpus.values() for t in ts]
+        import ipdb; ipdb.set_trace()
+        tfidf.fit(raw_docs)
+        return tfidf
+
 
     @staticmethod
     def create_fasttext_model(self):

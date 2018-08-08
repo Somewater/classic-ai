@@ -1,6 +1,6 @@
-from typing import NamedTuple, Iterator, List
+from typing import NamedTuple, Iterator, List, Dict
 from my.utils import get_cyrillic_lines, get_cyrillic_words, get_lines, MakeIter, is_cyrillic
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 
 class Topic(object):
     def get_title(self) -> str:
@@ -166,3 +166,21 @@ class SCTM(namedtuple('SCTM', ['id', 'title', 'categories', 'words']), Topic):
     title: str
     categories: List[str]
     words: List[str]
+
+    @staticmethod
+    def corpus(sctms: Iterator['SCTM']) -> Dict[str, List[Topic]]:
+        categories = {'Кино',
+                      'Космонавтика',
+                      'Медицина',
+                      'Музыка',
+                      'Транспорт',
+                      'Финансы',
+                      'Футбол',
+                      'Шахматы'}
+        posts = defaultdict(list)
+        for p in sctms:
+            pc = [c for c in p.categories if c in categories]
+            if len(pc) == 1:
+                category = pc[0]
+                posts[category].append(p)
+        return posts

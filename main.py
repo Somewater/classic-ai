@@ -10,7 +10,6 @@ logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=lo
 
 reader = DataReader()
 generator = Generator1(logging.getLogger('generator'), reader)
-generator.start()
 preparator = WikiPagePreparator()
 
 corpus = OpCorpus(reader)
