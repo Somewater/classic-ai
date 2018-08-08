@@ -4,6 +4,7 @@ import csv
 from collections import Counter
 import multiprocessing as mp
 from my.utils import group_by_n, stem, lemma, lemm_or_stem
+from my import DataHelper
 import math
 
 class WikiPagePreparator:
