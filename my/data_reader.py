@@ -209,6 +209,18 @@ class DataReader:
                         tag_text = None
                 element.clear()
 
+    # dictionary of lemms
+    def read_check_topics(self) -> Dict[str, List[str]]:
+        result = dict()
+        for root, dirs, files in os.walk(os.path.join('data', 'topics')):
+            for file in files:
+                if file.endswith('.txt'):
+                    name = file.replace('.txt', '').lower()
+                    with open(os.path.join(root, file)) as f:
+                        lemms = [w.strip() for w in f.readlines() if w.strip()]
+                        result[name] = lemms
+        return result
+
 class OpCorpus(Corpus):
     def __init__(self, reader: DataReader):
         super().__init__('opcorpora', reader.read_opcorpora)
