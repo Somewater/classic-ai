@@ -164,7 +164,7 @@ class DataReader:
         else:
             return os.path.join('tmp')
 
-    def load_word_count(self, filepath: str = 'data/word_count.csv') -> Dict[str, int]:
+    def load_word_count(self, filepath: str = 'data/word_count_union.csv') -> Dict[str, int]:
         wc = dict()
         with open(filepath) as file:
             for line in file:
