@@ -179,6 +179,22 @@ class DataReader:
                 line = "%10.d %s\n" % (c, w)
                 file.write(line)
 
+    def read_sctm(self) -> Iterator[SCTM]:
+        with open(os.path.join('data', 'SCTMru.xml')) as f:
+            tag_id = None
+            tag_title = None
+            tag_text = None
+            tag_categories = None
+            for event, element in etree.iterparse(f,
+                                                  events=('start', 'end'),
+                                                  tag=('page', 'id', 'title', 'text', 'category'),
+                                                  encoding='utf-8'):
+                tag = element.tag
+                if event == 'start':
+                    pass
+                elif event == 'end'
+                    element.clear()
+
 class OpCorpus(Corpus):
     def __init__(self, reader: DataReader):
         super().__init__('opcorpora', reader.read_opcorpora)

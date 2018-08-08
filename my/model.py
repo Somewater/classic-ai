@@ -160,3 +160,9 @@ class OpCorpToken(NamedTuple):
     text: str
     gs: List[str]
     pos: str # part of speech
+
+class SCTM(namedtuple('SCTM', ['id', 'title', 'categories', 'words']), Topic):
+    id: int
+    title: str
+    categories: List[str]
+    words: List[str]
