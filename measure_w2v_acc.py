@@ -87,18 +87,18 @@ def measure_w2v_acc_wrapper0(size, window, negative, min_count, epochs, alpha, a
         proc = subprocess.Popen([str(v) for v in [
             'python',
             'measure_w2v_acc.py',
-            '--size', size,
-            '--window', window,
-            '--negative', negative,
-            '--min_count', min_count,
+            '--size', int(size),
+            '--window', int(window),
+            '--negative', int(negative),
+            '--min_count', int(min_count),
             '--ns_exponent', ns_exponent,
-            '--cbow_mean', cbow_mean,
-            '--epochs', epochs,
+            '--cbow_mean', int(cbow_mean),
+            '--epochs', int(epochs),
             '--alpha', alpha,
             '--alpha_dec', alpha_dec,
             '--sample', sample,
-            '--sg', sg,
-            '--hs', hs]], stdout=subprocess.PIPE)
+            '--sg', int(sg),
+            '--hs', int(hs)]], stdout=subprocess.PIPE)
         proc_out, proc_err = proc.communicate()
         score = float(proc_out.splitlines()[-1])
         print("Result=%f with %s" % (score, params_str))
