@@ -31,8 +31,9 @@ class CorpusW2v(object):
             yield tokens
 
     def train(self):
-        self.model.build_vocab(self.sentences())
-        self.model.train(self.sentences(), total_examples=self.model.corpus_count, epochs=self.model.iter)
+        if self.model.corpus_count == 0:
+            self.model.build_vocab(self.sentences())
+        self.model.train(self.sentences(), total_examples=self.model.corpus_count, epochs=1)
         self.model.save(self.model_filepath)
 
     def load(self):
@@ -51,14 +52,19 @@ class CorpusW2v(object):
                 yield w
         #return .most_similar(positive=[])
 
-    def accuracy(self, check_corpus: Dict[str, List[Topic]]):
-        #  TODO
-        tfidf = TfidfVectorizer(stop_words=self.reader.read_stop_words())
-        raw_docs = [" ".join(self.helper.get_lemms(t)) for ts in check_corpus.values() for t in ts]
-        import ipdb; ipdb.set_trace()
-        tfidf.fit(raw_docs)
-        return tfidf
-
+    def accuracy(self) -> Tuple[float, Dict[str, Tuple[int, int]]]:
+        topics = self.reader.read_check_topics()
+        result_data = dict()
+        result_acc = []
+        for topic, lemms in topics.items():
+            lemms = set(lemms)
+            result_data[topic] = []
+            for n in [100, 1000]:
+                res = self.model.wv.most_similar(topic, topn=n)
+                union = len(set([w for w, _ in res]) & lemms)
+                result_data[topic].append(union)
+                result_acc.append(union / n)
+        return sum(result_acc) / len(result_acc), result_data
 
     @staticmethod
     def create_fasttext_model(self):
