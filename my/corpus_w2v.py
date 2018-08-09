@@ -8,6 +8,8 @@ from my import DataReader
 from my.utils import stem, lemma
 import os
 from gensim.corpora import WikiCorpus
+from scipy.spatial.distance import cosine
+import numpy as np
 
 class CorpusW2v(object):
     def __init__(self, corpus: Corpus, reader: DataReader, vector_size: int = 100):
@@ -27,7 +29,6 @@ class CorpusW2v(object):
             if stemm:
                 tokens = [stem(w) for w in tokens]
             i += 1
-            #if i % 100000 == 0: print(i, 'topics iterated')
             yield tokens
 
     def train(self):
@@ -39,6 +40,7 @@ class CorpusW2v(object):
     def load(self):
         self.model = Word2Vec.load(self.model_filepath)
         self.model.init_sims(replace=True)
+        #self.lemma2word = {word.split('_')[0]: word for word in self.model.wv.index2word}
 
     def find_similar_words(self, words: List[str], stemmer: Callable[[str], str] = None) -> Iterator[str]:
         word_in_corpus = []
@@ -50,7 +52,6 @@ class CorpusW2v(object):
         if word_in_corpus:
             for w, score in self.model.wv.most_similar(positive=word_in_corpus, topn=1000):
                 yield w
-        #return .most_similar(positive=[])
 
     def accuracy(self) -> Tuple[float, Dict[str, Tuple[int, int]]]:
         topics = self.reader.read_check_topics()
@@ -65,6 +66,26 @@ class CorpusW2v(object):
                 result_data[topic].append(union)
                 result_acc.append(union / n)
         return sum(result_acc) / len(result_acc), result_data
+
+    def word_vector(self, word):
+        word = lemma(word)
+        #word = self.lemma2word.get(lemma)
+        return self.model[word] if word in self.model else None
+
+    def text_vector(self, text):
+        """Вектор текста, получается путем усреднения векторов всех слов в тексте"""
+        word_vectors = [
+            self.word_vector(token)
+            for token in get_cyrillic_words(text.lower())
+            if len(token) > 2 and not (token in self.stop_words)
+        ]
+        word_vectors = [vec for vec in word_vectors if vec is not None]
+        return np.mean(word_vectors, axis=0)
+
+    def distance(self, vec1, vec2):
+        if vec1 is None or vec2 is None:
+            return 2
+        return cosine(vec1, vec2)
 
     @staticmethod
     def create_fasttext_model(self):

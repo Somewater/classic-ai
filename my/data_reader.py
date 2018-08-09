@@ -1,6 +1,6 @@
 from typing import List, Iterator, Set, Dict, Tuple
 from my.model import *
-from my.utils import stem, lemma
+from my.utils import *
 import os
 import json
 import bz2
@@ -8,15 +8,23 @@ from lxml import etree
 import csv
 import re
 from collections import defaultdict
+import itertools
+import nltk
 
 BigLetters = re.compile('[A-Z]+')
 
 class DataReader:
+    DATASETS_PATH = os.environ.get('DATASETS_PATH', 'data')
+
     def read_classic_poems(self) -> List[Poem]:
         poems: List[Poem] = []
-        with open(os.path.join('data', 'classic_poems.json')) as f:
+        with open(os.path.join(DataReader.DATASETS_PATH, 'classic_poems.json')) as f:
             for entry in json.load(f):
-                poem: Poem = Poem(Poet.by_poet_id(entry['poet_id']), entry['title'], entry['content'])
+                prepared_content = "\n".join([
+                    unify_chars(line)
+                    for line in get_lines(entry['content'])
+                ])
+                poem: Poem = Poem(Poet.by_poet_id(entry['poet_id']), entry['title'], prepared_content)
                 poems.append(poem)
         return poems
 
@@ -220,6 +228,30 @@ class DataReader:
                         lemms = [w.strip() for w in f.readlines() if w.strip()]
                         result[name] = lemms
         return result
+
+    def form_dictionary_from_csv(self, phonetic: 'Phonetic', column='paragraph', max_docs=30000):
+        """Загрузить словарь слов из CSV файла с текстами, индексированный по формам слова.
+        Возвращает словарь вида:
+            {форма: {множество, слов, кандидатов, ...}}
+            форма — (<число_слогов>, <номер_ударного>)
+        """
+        corpora_tokens = []
+        with open(os.path.join(DataReader.DATASETS_PATH, 'sdsj2017_sberquad.csv')) as fin:
+            reader = csv.DictReader(fin)
+            for row in itertools.islice(reader, max_docs):
+                paragraph = row[column]
+                paragraph_tokens = nltk.tokenize.word_tokenize(paragraph.lower())
+                corpora_tokens += paragraph_tokens
+
+        word_by_form = defaultdict(set)
+        for token in corpora_tokens:
+            if token.isalpha():
+                word_syllables = phonetic.syllables_count(token)
+                word_accent = phonetic.accent_syllable(token)
+                form = (word_syllables, word_accent)
+                word_by_form[form].add(token)
+
+        return word_by_form
 
 class OpCorpus(Corpus):
     def __init__(self, reader: DataReader):

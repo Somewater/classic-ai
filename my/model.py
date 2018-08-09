@@ -66,6 +66,25 @@ class Poet(NamedTuple):
     def all(cls):
         return list(cls._by_poet_id.values())
 
+    @classmethod
+    def recover(cls, poet_id):
+        char = poet_id.lower()[0]
+        if char == 'p': return 'pushkin'
+        elif char == 'e': return 'esenin'
+        elif char == 'm': return 'mayakovskij'
+        elif char == 'b': return 'blok'
+        elif char == 't': return 'tyutchev'
+        else: return poet_id
+
+    def __hash__(self):
+        return self.id.__hash__()
+
+    def __eq__(self, other):
+        if isinstance(other, type(self)):
+            return self.id.__eq__(other.id)
+        else:
+            return self.id.__eq__(other)
+
 class Poem(ContentBase, namedtuple('WikiPage', ['poet', 'title', 'content'])):
     poet: Poet
     title: str
