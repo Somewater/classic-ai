@@ -10,12 +10,12 @@ import os
 from gensim.corpora import WikiCorpus
 
 class CorpusW2v(object):
-    def __init__(self, corpus: Corpus, reader: DataReader):
+    def __init__(self, corpus: Corpus, reader: DataReader, vector_size: int = 100):
         self.corpus = corpus
         self.reader = reader
         self.stop_words = reader.read_stop_words()
         self.model_filepath = self.reader.get_tmp_filepath(self.corpus.name() + '_w2v.bin')
-        self.model = Word2Vec(size=100, window=5, min_count=5, workers=4)
+        self.model = Word2Vec(size=vector_size, window=5, min_count=5, workers=4)
         self.helper = DataHelper(reader)
 
     def sentences(self, stemm: bool = False, lemmatize: bool = False) -> Iterator[Iterator[str]]:
