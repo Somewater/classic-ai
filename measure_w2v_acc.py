@@ -1,4 +1,7 @@
 import argparse
+
+from gensim.models.callbacks import CallbackAny2Vec
+
 import my
 from my import *
 from collections import Counter
@@ -14,7 +17,7 @@ arg_parser.add_argument('--ns_exponent', default='0.75')
 arg_parser.add_argument('--cbow_mean', default='1')
 arg_parser.add_argument('--epochs', default='5')
 arg_parser.add_argument('--alpha', default='0.025')
-arg_parser.add_argument('--alpha_dec', default='0.001')
+arg_parser.add_argument('--min_alpha', default='0.0001')
 arg_parser.add_argument('--sample', default='0.001')
 arg_parser.add_argument('--sg', default='0')
 arg_parser.add_argument('--hs', default='0')
@@ -29,8 +32,7 @@ ns_exponent = float(args.ns_exponent)
 cbow_mean = int(args.cbow_mean)
 epochs = int(args.epochs)
 alpha = float(args.alpha)
-alpha_dec = float(args.alpha_dec)
-if alpha_dec == -1: alpha_dec = alpha / epochs
+min_alpha = float(args.min_alpha)
 sample = float(args.sample)
 sg = int(args.sg)
 hs = int(args.hs)
@@ -52,10 +54,20 @@ corpusw2v.model.min_count = min_count
 
 current_alpha = alpha
 max_accuracy = -1
-for epoch in range(epochs):
-    corpusw2v.model.alpha = current_alpha
+
+callback = CallbackAny2Vec()
+if corpusw2v.model.callbacks:
+    corpusw2v.model.callbacks.append()
+else:
+    corpusw2v.model.callbacks = [callback]
+
+
+corpusw2v.train(alpha, min_alpha, epochs)
+
+
+for epoch in range():
     logging.info("Epoch %d on %s" % (epoch, repr(corpusw2v.model)))
-    corpusw2v.train()
+
     acc, acc_info = corpusw2v.accuracy()
     logging.info("Epoch %d result = %f\n%s" % (epoch, acc, "\n".join(['\t' + l for l in repr(acc_info).splitlines()])))
     if acc > max_accuracy:
@@ -79,7 +91,7 @@ import subprocess
 import math
 import traceback
 
-def measure_w2v_acc_wrapper0(size, window, negative, min_count, epochs, alpha, alpha_dec = -1, ns_exponent = 0.75, cbow_mean = 1, sample = 0.001, sg = 0, hs = 0):
+def measure_w2v_acc_wrapper0(size, window, negative, min_count, epochs, alpha, min_alpha=0.0001, ns_exponent = 0.75, cbow_mean = 1, sample = 0.001, sg = 0, hs = 0):
     params_str = "size=%d, window=%d, negative=%d, min_count=%d, epochs=%d, alpha=%f" % (size, window, negative, min_count, epochs, alpha)
     print("Exec with %s" % params_str)
     # return 1 - math.fabs(alpha - 0.02)
@@ -95,7 +107,7 @@ def measure_w2v_acc_wrapper0(size, window, negative, min_count, epochs, alpha, a
             '--cbow_mean', int(cbow_mean),
             '--epochs', int(epochs),
             '--alpha', alpha,
-            '--alpha_dec', alpha_dec,
+            '--min_alpha', min_alpha,
             '--sample', sample,
             '--sg', int(sg),
             '--hs', int(hs)]], stdout=subprocess.PIPE)
