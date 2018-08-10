@@ -12,5 +12,5 @@ reader = DataReader()
 generator = Generator1(logging.getLogger('generator'), reader)
 preparator = WikiPagePreparator()
 
-corpus = OpCorpus(reader)
+corpus = WikiCorpus(reader, type='lemm')
 corpusw2v = CorpusW2v(corpus, reader)

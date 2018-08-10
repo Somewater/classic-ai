@@ -10,6 +10,7 @@ import os
 from gensim.corpora import WikiCorpus
 from scipy.spatial.distance import cosine
 import numpy as np
+import multiprocessing
 
 class CorpusW2v(object):
     def __init__(self, corpus: Corpus, reader: DataReader, vector_size: int = 100):
@@ -17,7 +18,7 @@ class CorpusW2v(object):
         self.reader = reader
         self.stop_words = reader.read_stop_words()
         self.model_filepath = self.reader.get_tmp_filepath(self.corpus.name() + '_w2v.bin')
-        self.model = Word2Vec(size=vector_size, window=5, min_count=5, workers=4)
+        self.model = Word2Vec(size=vector_size, window=5, min_count=5, workers=multiprocessing.cpu_count())
         self.helper = DataHelper(reader)
 
     def sentences(self, stemm: bool = False, lemmatize: bool = False) -> Iterator[Iterator[str]]:
@@ -36,11 +37,14 @@ class CorpusW2v(object):
             self.model.build_vocab(self.sentences())
         self.model.alpha = alpha
         self.model.min_alpha = min_alpha
-        self.model.train(sentences=self.sentences(),
+        self.model.train(sentences=iter(self.sentences()),
                          total_examples=self.model.corpus_count,
                          epochs=epochs,
                          start_alpha=alpha,
-                         end_alpha=min_alpha)
+                         end_alpha=min_alpha,
+                         report_delay=60.0)
+
+    def save(self):
         self.model.save(self.model_filepath)
 
     def load(self):

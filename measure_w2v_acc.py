@@ -7,6 +7,8 @@ from my import *
 from collections import Counter
 from gensim.models import Word2Vec
 import logging
+import time
+import warnings
 
 arg_parser = argparse.ArgumentParser(description="Script readme")
 arg_parser.add_argument('--size', default='100')
@@ -51,34 +53,48 @@ corpusw2v.model.sample = sample
 corpusw2v.model.sg = sg
 corpusw2v.model.hs = hs
 corpusw2v.model.min_count = min_count
+logging.info("Call args: %s" % repr(args))
 
-current_alpha = alpha
-max_accuracy = -1
 
-callback = CallbackAny2Vec()
+
+class MyCallback(CallbackAny2Vec):
+    def on_train_begin(self, model):
+        self.epoch_number = 1
+        self.start_time = time.time()
+        self.max_accuracy = -1
+        self.max_accuracy_epoch = 0
+        self.full_duration_secods = None
+
+    def on_epoch_begin(self, model):
+        self.epoch_start_time = time.time()
+
+    def on_epoch_end(self, model):
+        epoch_duration_seconds = time.time() - self.epoch_start_time
+        acc, acc_info = corpusw2v.accuracy()
+        logging.info("Epoch %d result = %f after %.1f seconds\n\t%s"
+                     % (self.epoch_number, acc, epoch_duration_seconds, repr(acc_info)))
+        if acc > self.max_accuracy:
+            self.max_accuracy = acc
+            self.max_accuracy_epoch = self.epoch_number
+        elif acc < self.max_accuracy:
+            logging.warning("Accuracy degradation %f->%f on %d epoch" % (self.max_accuracy, acc, epochs))
+        self.epoch_number += 1
+
+    def on_train_end(self, model):
+        self.full_duration_secods = time.time() - self.start_time
+
+callback = MyCallback()
 if corpusw2v.model.callbacks:
     corpusw2v.model.callbacks.append()
 else:
     corpusw2v.model.callbacks = [callback]
 
-
-corpusw2v.train(alpha, min_alpha, epochs)
-
-
-for epoch in range():
-    logging.info("Epoch %d on %s" % (epoch, repr(corpusw2v.model)))
-
-    acc, acc_info = corpusw2v.accuracy()
-    logging.info("Epoch %d result = %f\n%s" % (epoch, acc, "\n".join(['\t' + l for l in repr(acc_info).splitlines()])))
-    if acc > max_accuracy:
-        max_accuracy = acc
-    else:
-        logging.warning("Accuracy degradation %f->%f on %d epoch" % (max_accuracy, acc, epoch))
-    current_alpha -= alpha_dec
-    if current_alpha <= 0:
-        logging.error('alpha is not positive, stop on %d epoch' % epoch)
-        break
-print(max_accuracy)
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    corpusw2v.train(alpha, min_alpha, epochs)
+logging.info("Best accuracy is %f (%d epoch from %d) after %.1f seconds" %
+             (callback.max_accuracy, callback.max_accuracy_epoch, epochs, callback.full_duration_secods))
+print('%.10f' % callback.max_accuracy)
 
 import sys
 sys.exit()
