@@ -24,6 +24,7 @@ arg_parser.add_argument('--sample', default='0.001')
 arg_parser.add_argument('--sg', default='0')
 arg_parser.add_argument('--hs', default='0')
 arg_parser.add_argument('--log', default='measure_w2v_acc.log')
+arg_parser.add_argument('--save', default='')
 args = arg_parser.parse_args()
 
 size = int(args.size)
@@ -95,6 +96,9 @@ with warnings.catch_warnings():
     corpusw2v.train(alpha, min_alpha, epochs)
 logging.info("Best accuracy is %f (%d epoch from %d) after %.1f seconds" %
              (callback.max_accuracy, callback.max_accuracy_epoch, epochs, callback.full_duration_secods))
+if args.save:
+    corpusw2v.model.wv.save_word2vec_format(args.save)
+print('Analogy accuracy: %10.f' % corpusw2v.analogy_accuracy())
 print('%.10f' % callback.max_accuracy)
 
 import sys

@@ -11,6 +11,10 @@ from gensim.corpora import WikiCorpus
 from scipy.spatial.distance import cosine
 import numpy as np
 import multiprocessing
+from gensim.models.callbacks import CallbackAny2Vec
+
+class MyCallback(CallbackAny2Vec):
+    pass
 
 class CorpusW2v(object):
     def __init__(self, corpus: Corpus, reader: DataReader, vector_size: int = 100):
@@ -76,6 +80,12 @@ class CorpusW2v(object):
                 result_data[topic].append(union)
                 result_acc.append(union / n)
         return sum(result_acc) / len(result_acc), result_data
+
+    def analogy_accuracy(self):
+        section = self.model.accuracy('data/ru_analogy.txt')[-1]
+        correct, incorrect = len(section['correct']), len(section['incorrect'])
+        if correct + incorrect > 0:
+            return correct / (correct + incorrect)
 
     def word_vector(self, word):
         word = lemma(word)
