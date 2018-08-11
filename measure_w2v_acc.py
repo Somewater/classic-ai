@@ -78,6 +78,7 @@ class MyCallback(CallbackAny2Vec):
             self.max_accuracy_epoch = self.epoch_number
         elif acc < self.max_accuracy:
             logging.warning("Accuracy degradation %f->%f on %d epoch" % (self.max_accuracy, acc, epochs))
+        print('%d/%d\t%.10f' % (epochs, self.epoch_number, acc))
         self.epoch_number += 1
 
     def on_train_end(self, model):

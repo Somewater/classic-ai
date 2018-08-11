@@ -5,7 +5,7 @@ from my import DataHelper
 from my.model import *
 from gensim.models import Word2Vec, FastText
 from my import DataReader
-from my.utils import stem, lemma
+from my.utils import stem, lemma, MakeIter
 import os
 from gensim.corpora import WikiCorpus
 from scipy.spatial.distance import cosine
@@ -37,7 +37,7 @@ class CorpusW2v(object):
             self.model.build_vocab(self.sentences())
         self.model.alpha = alpha
         self.model.min_alpha = min_alpha
-        self.model.train(sentences=iter(self.sentences()),
+        self.model.train(sentences=MakeIter(self.sentences),
                          total_examples=self.model.corpus_count,
                          epochs=epochs,
                          start_alpha=alpha,
