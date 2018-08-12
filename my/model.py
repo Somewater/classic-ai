@@ -68,7 +68,7 @@ class ContentBaseImpl2(namedtuple('ContentBaseImpl', ['title', 'sentences']), Co
     title: str
     sentences: List[List[str]]
 
-    def get_sentence_lemms(self) -> Iterator[List[str]]:
+    def get_sentence_lemms(self) -> List[List[str]]:
         return self.sentences
 
     def get_cyrillic_lines(self) -> Iterator[str]:
