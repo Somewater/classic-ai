@@ -16,8 +16,7 @@ BigLetters = re.compile('[A-Z]+')
 class DataReader:
     DATASETS_PATH = os.environ.get('DATASETS_PATH', 'data')
 
-    def read_classic_poems(self) -> List[Poem]:
-        poems: List[Poem] = []
+    def read_classic_poems(self) -> Iterator[Poem]:
         with open(os.path.join(DataReader.DATASETS_PATH, 'classic_poems.json')) as f:
             for entry in json.load(f):
                 prepared_content = "\n".join([
@@ -25,8 +24,7 @@ class DataReader:
                     for line in get_lines(entry['content'])
                 ])
                 poem: Poem = Poem(Poet.by_poet_id(entry['poet_id']), entry['title'], prepared_content)
-                poems.append(poem)
-        return poems
+                yield poem
 
     def read_opcorpora(self, ignore_gs: bool = True) -> Iterator[OpCorpText]:
         with bz2.open(os.path.join('data', 'annot.opcorpora.xml.bz2')) as f:
@@ -252,6 +250,16 @@ class DataReader:
                 word_by_form[form].add(token)
 
         return word_by_form
+
+
+    # https://github.com/DenisVorotyntsev/StihiData
+    def read_best_164443(self) -> Iterator[Topic]:
+        with open(os.path.join('data', 'best_164443.csv')) as f:
+            reader = csv.reader(f, delimiter=',')
+            next(reader) # skip header
+            for line in reader:
+                name, content = line
+                yield ContentBaseImpl(name, content)
 
 class OpCorpus(Corpus):
     def __init__(self, reader: DataReader):

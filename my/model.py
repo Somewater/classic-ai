@@ -1,5 +1,5 @@
 from typing import NamedTuple, Iterator, List, Dict
-from my.utils import get_cyrillic_lines, get_cyrillic_words, get_lines, MakeIter, is_cyrillic
+from my.utils import get_cyrillic_lines, get_cyrillic_words, get_lines, MakeIter, is_cyrillic, lemma
 from collections import namedtuple, defaultdict
 
 class Topic(object):
@@ -52,6 +52,16 @@ class ContentBase(Topic):
             for w in get_cyrillic_words(l):
                 yield w
 
+    def get_sentence_lemms(self) -> Iterator[List[str]]:
+        for line in self.get_cyrillic_lines():
+            line = line.strip().lower()
+            if line:
+                words = get_cyrillic_words(line)
+                yield [lemma(w) for w in words]
+
+class ContentBaseImpl(namedtuple('ContentBaseImpl', ['title', 'content']), ContentBase):
+    pass
+
 class Poet(NamedTuple):
     id: str
     _by_poet_id = dict()
@@ -85,7 +95,7 @@ class Poet(NamedTuple):
         else:
             return self.id.__eq__(other)
 
-class Poem(ContentBase, namedtuple('WikiPage', ['poet', 'title', 'content'])):
+class Poem(ContentBase, namedtuple('Poem', ['poet', 'title', 'content'])):
     poet: Poet
     title: str
     content: str

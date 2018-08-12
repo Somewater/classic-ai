@@ -59,7 +59,7 @@ class PoemTemplateLoader(object):
     Шаблон — обработанное и обрезанное стихотворение в виде набора отдельных токенов (слов).
     """
 
-    def __init__(self, poems: List[Poem], min_lines=3, max_lines=8):
+    def __init__(self, poems: Iterator[Poem], min_lines=3, max_lines=8):
         self.poet_templates = collections.defaultdict(list)
         self.min_lines = min_lines
         self.max_lines = max_lines

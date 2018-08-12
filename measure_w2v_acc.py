@@ -98,7 +98,7 @@ logging.info("Best accuracy is %f (%d epoch from %d) after %.1f seconds" %
              (callback.max_accuracy, callback.max_accuracy_epoch, epochs, callback.full_duration_secods))
 if args.save:
     corpusw2v.model.wv.save_word2vec_format(args.save)
-print('Analogy accuracy: %10.f' % corpusw2v.analogy_accuracy())
+print('Analogy accuracy: %.10f' % corpusw2v.analogy_accuracy())
 print('%.10f' % callback.max_accuracy)
 
 import sys
