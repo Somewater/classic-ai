@@ -8,6 +8,7 @@ from my import DataHelper
 import math
 
 class WikiPagePreparator:
+    # xml -> CSV
     def prepare_wiki_pages(self, reader: DataReader):
         output = os.path.join('data', 'wiki_pages.csv')
         output_wc = os.path.join('data', 'wiki_pages_wc.csv')
@@ -31,6 +32,7 @@ class WikiPagePreparator:
                 writer.writerow([str(cnt), word])
             print("word counter written")
 
+    # CSV (words) -> CSV (lemms - stop_words)
     def prepare_wiki_pages_stems(self, workers=8, stem_name: str = 'stem'):
         csv.field_size_limit(2 ** 31)
         input_filepath = os.path.join('data', 'wiki_pages.csv')

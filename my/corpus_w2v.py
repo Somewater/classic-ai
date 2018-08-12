@@ -13,9 +13,6 @@ import numpy as np
 import multiprocessing
 from gensim.models.callbacks import CallbackAny2Vec
 
-class MyCallback(CallbackAny2Vec):
-    pass
-
 class CorpusW2v(object):
     def __init__(self, corpus: Corpus, reader: DataReader, vector_size: int = 100):
         self.corpus = corpus
