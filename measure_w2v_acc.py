@@ -48,13 +48,14 @@ corpusw2v.model.build_vocab(corpusw2v.sentences())
 corpusw2v.model.save(reader.get_tmp_filepath('mode_with_vocab.bin'))
 
 class MyCallback(CallbackAny2Vec):
-    def on_train_begin(self, model, reporter):
+    def on_train_begin(self, model, reporter, param):
         self.epoch_number = 1
         self.start_time = time.time()
         self.max_accuracy = -1
         self.max_accuracy_epoch = 0
         self.full_duration_secods = None
         self.reporter = reporter
+        self.param = param
 
     def on_epoch_begin(self, model):
         self.epoch_start_time = time.time()
@@ -73,7 +74,9 @@ class MyCallback(CallbackAny2Vec):
 
         analogy_acc = corpusw2v.analogy_accuracy()
         accuracy = self.max_accuracy
-        row = [self.epoch_number, size, window, negative, min_count, alpha, sample, sg, hs, accuracy, analogy_acc]
+        row = [self.epoch_number, self.param['size'], self.param['window'], self.param['negative'],
+               self.param['min_count'], self.param['alpha'], self.param['sample'], self.param['sg'], self.param['hs'],
+               accuracy, analogy_acc]
         self.reporter.writerow([str(i) for i in row])
 
         self.epoch_number += 1
@@ -82,25 +85,22 @@ class MyCallback(CallbackAny2Vec):
         self.full_duration_secods = time.time() - self.start_time
 
 reporter = csv.writer(open('report.csv', 'a'))
-callback = MyCallback(reporter)
 reporter.writerow(['epoch', 'size', 'window', 'negative', 'min_count', 'alpha', 'sample', 'sg', 'hs', 'accuracy', 'analogy_acc'])
 params = []
-for size in [50, 100, 300, 500, 1000]:
-    for window in [2, 5, 20, 50, 200, 500]:
-        for negative in [2 , 5, 50]:
-            for min_count in [5, 20, 100]:
-                for alpha in [0.001, 0.025, 0.05, 0.1]:
-                    for sample in [0.001, 0.005, 0.01]:
-                        for sg in [0, 1]:
-                            for hs in [0, 1]:
-                                params.append({'size': size, 'window': window, 'negative': negative,
-                                               'min_count': min_count, 'alpha': alpha, 'sample': sample,
-                                               'sg': sg, 'hs': hs})
+for window in [2, 5, 20, 50, 200, 500]:
+    for negative in [2 , 5, 50]:
+        for min_count in [5, 20, 100]:
+            for alpha in [0.001, 0.025, 0.05, 0.1]:
+                for sample in [0.001, 0.005, 0.01]:
+                    for sg in [0, 1]:
+                        for hs in [0, 1]:
+                            params.append({'size': size, 'window': window, 'negative': negative,
+                                           'min_count': min_count, 'alpha': alpha, 'sample': sample,
+                                           'sg': sg, 'hs': hs})
 
 
 for param_idx, param in enumerate(params):
     print("Param %d from  %d: %s" % (param_idx, len(params), repr(param)))
-    size = param['size']
     window = param['window']
     negative = param['negative']
     min_count = param['min_count']
@@ -109,6 +109,7 @@ for param_idx, param in enumerate(params):
     sg = param['sg']
     hs = param['hs']
 
+    callback = MyCallback(reporter, param)
     corpusw2v.model = Word2Vec.load('mode_with_vocab.bin')
     corpusw2v.model.window = window
     corpusw2v.model.negative = negative
