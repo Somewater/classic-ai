@@ -44,27 +44,17 @@ logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=lo
 reader = DataReader()
 corpus = WikiCorpus(reader, type='lemm')
 corpusw2v = CorpusW2v(corpus, reader, vector_size=size)
-
-corpusw2v.model.window = window
-corpusw2v.model.negative = negative
-corpusw2v.model.ns_exponent = ns_exponent
-corpusw2v.model.cbow_mean = cbow_mean
-corpusw2v.model.epochs = 1
-corpusw2v.model.sample = sample
-corpusw2v.model.sg = sg
-corpusw2v.model.hs = hs
-corpusw2v.model.min_count = min_count
-logging.info("Call args: %s" % repr(args))
-
-
+corpusw2v.model.build_vocab(corpusw2v.sentences())
+corpusw2v.model.save(reader.get_tmp_filepath('mode_with_vocab.bin'))
 
 class MyCallback(CallbackAny2Vec):
-    def on_train_begin(self, model):
+    def on_train_begin(self, model, reporter):
         self.epoch_number = 1
         self.start_time = time.time()
         self.max_accuracy = -1
         self.max_accuracy_epoch = 0
         self.full_duration_secods = None
+        self.reporter = reporter
 
     def on_epoch_begin(self, model):
         self.epoch_start_time = time.time()
@@ -80,26 +70,72 @@ class MyCallback(CallbackAny2Vec):
         elif acc < self.max_accuracy:
             logging.warning("Accuracy degradation %f->%f on %d epoch" % (self.max_accuracy, acc, epochs))
         print('%d/%d\t%.10f' % (epochs, self.epoch_number, acc))
+
+        analogy_acc = corpusw2v.analogy_accuracy()
+        accuracy = self.max_accuracy
+        row = [self.epoch_number, size, window, negative, min_count, alpha, sample, sg, hs, accuracy, analogy_acc]
+        self.reporter.writerow([str(i) for i in row])
+
         self.epoch_number += 1
 
     def on_train_end(self, model):
         self.full_duration_secods = time.time() - self.start_time
 
-callback = MyCallback()
-if corpusw2v.model.callbacks:
-    corpusw2v.model.callbacks.append()
-else:
+reporter = csv.writer(open('report.csv', 'a'))
+callback = MyCallback(reporter)
+reporter.writerow(['epoch', 'size', 'window', 'negative', 'min_count', 'alpha', 'sample', 'sg', 'hs', 'accuracy', 'analogy_acc'])
+params = []
+for size in [50, 100, 300, 500, 1000]:
+    for window in [2, 5, 20, 50, 200, 500]:
+        for negative in [2 , 5, 50]:
+            for min_count in [5, 20, 100]:
+                for alpha in [0.001, 0.025, 0.05, 0.1]:
+                    for sample in [0.001, 0.005, 0.01]:
+                        for sg in [0, 1]:
+                            for hs in [0, 1]:
+                                params.append({'size': size, 'window': window, 'negative': negative,
+                                               'min_count': min_count, 'alpha': alpha, 'sample': sample,
+                                               'sg': sg, 'hs': hs})
+
+
+for param_idx, param in enumerate(params):
+    print("Param %d from  %d: %s" % (param_idx, len(params), repr(param)))
+    size = param['size']
+    window = param['window']
+    negative = param['negative']
+    min_count = param['min_count']
+    alpha = param['alpha']
+    sample = param['sample']
+    sg = param['sg']
+    hs = param['hs']
+
+    corpusw2v.model = Word2Vec.load('mode_with_vocab.bin')
+    corpusw2v.model.window = window
+    corpusw2v.model.negative = negative
+    corpusw2v.model.ns_exponent = ns_exponent
+    corpusw2v.model.cbow_mean = cbow_mean
+    corpusw2v.model.epochs = 3
+    corpusw2v.model.sample = sample
+    corpusw2v.model.sg = sg
+    corpusw2v.model.hs = hs
+    corpusw2v.model.min_count = min_count
+
     corpusw2v.model.callbacks = [callback]
 
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore")
-    corpusw2v.train(alpha, min_alpha, epochs)
-logging.info("Best accuracy is %f (%d epoch from %d) after %.1f seconds" %
-             (callback.max_accuracy, callback.max_accuracy_epoch, epochs, callback.full_duration_secods))
-if args.save:
-    corpusw2v.model.wv.save_word2vec_format(args.save)
-print('Analogy accuracy: %.10f' % corpusw2v.analogy_accuracy())
-print('%.10f' % callback.max_accuracy)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        corpusw2v.train(alpha, min_alpha, epochs)
+    logging.info("Best accuracy is %f (%d epoch from %d) after %.1f seconds" %
+                 (callback.max_accuracy, callback.max_accuracy_epoch, epochs, callback.full_duration_secods))
+    if args.save:
+        corpusw2v.model.wv.save_word2vec_format(args.save)
+    analogy_acc = corpusw2v.analogy_accuracy()
+    accuracy = callback.max_accuracy
+    print('Analogy accuracy: %.10f' % analogy_acc)
+    print('Accuracy: %.10f' % accuracy)
+
+    row = [1, size, window, negative, min_count, alpha, sample, sg, hs, accuracy, analogy_acc]
+    reporter.writerow([str(i) for i in row])
 
 import sys
 sys.exit()
