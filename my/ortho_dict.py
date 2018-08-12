@@ -15,9 +15,10 @@ class Hagen:
 
     def __init__(self):
         self.name = 'hagen'
+        self.words = []
 
     def load(self):
-        with open(os.path.join('data', 'hagen-orf.txt')) as file:
+        with open(os.path.join('data', 'ortho', 'hagen-orf.txt')) as file:
             normal_form = None
             already_added_hashes = set()
             for line in file:
@@ -43,7 +44,7 @@ class Hagen:
                             else:
                                 word.is_normal_form = True
                                 normal_form = word
-                            self.add_word(word)
+                            self.words.append(word)
                 else:
                     normal_form = None
 
@@ -52,9 +53,10 @@ class Lopatin:
 
     def __init__(self):
         self.name = 'lopatin'
+        self.words = []
 
     def load(self):
-        with open(os.path.join('data', 'lop1v2.txt')) as file:
+        with open(os.path.join('data', 'ortho', 'lop1v2.txt')) as file:
             for line in file:
                 sharp_index = line.index('#')
                 percent_index = line.index('%', sharp_index)
@@ -66,16 +68,17 @@ class Lopatin:
                                               stress_char_after=False)
                     if word:
                         word.is_normal_form = True
-                        self.add_word(word)
+                        self.words.append(word)
 
 class Zalizniak:
     STRESSED_CHAR = "'"
 
     def __init__(self):
         self.name = 'zalizniak'
+        self.words = []
 
     def load(self):
-        with open(os.path.join('data', 'zalizniak.txt')) as file:
+        with open(os.path.join('data', 'ortho', 'zalizniak.txt')) as file:
             already_added_hashes = set()
             for line in file:
                 line = line.strip()
@@ -99,7 +102,7 @@ class Zalizniak:
                                 else:
                                     normal_form = word
                                     word.is_normal_form = True
-                                self.add_word(word)
+                                self.words.append(word)
 
 class WordResult(object):
     def __init__(self, word: Word):
@@ -123,8 +126,8 @@ class OrthoDict:
     FUZZIES = [0, Phonetic.FUZZY_CONS_STUNING, Phonetic.FUZZY_CUTOFF_FINAL_CONS,
                Phonetic.FUZZY_CONS_STUNING + Phonetic.FUZZY_CUTOFF_FINAL_CONS]
 
-    def __init__(self, *dictionaries):
-        self.dictionaries = dictionaries
+    def __init__(self):
+        self.dictionaries = [Lopatin(), Hagen(), Zalizniak()]
         self.frequency = None
         self.name = 'compound'
 
