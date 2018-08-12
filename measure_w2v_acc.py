@@ -44,8 +44,9 @@ logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=lo
 reader = DataReader()
 corpus = WikiCorpus(reader, type='lemm')
 corpusw2v = CorpusW2v(corpus, reader, vector_size=size)
-corpusw2v.model.build_vocab(corpusw2v.sentences())
-corpusw2v.model.save(reader.get_tmp_filepath('mode_with_vocab.bin'))
+if not os.path.isfile(reader.get_tmp_filepath('mode_with_vocab.bin')):
+    corpusw2v.model.build_vocab(corpusw2v.sentences())
+    corpusw2v.model.save(reader.get_tmp_filepath('mode_with_vocab.bin'))
 
 class MyCallback(CallbackAny2Vec):
     def __init__(self, reporter, param):
@@ -86,8 +87,10 @@ class MyCallback(CallbackAny2Vec):
     def on_train_end(self, model):
         self.full_duration_secods = time.time() - self.start_time
 
+report_inited = not os.path.isfile('report.csv')
 reporter = csv.writer(open('report.csv', 'a'))
-reporter.writerow(['epoch', 'size', 'window', 'negative', 'min_count', 'alpha', 'sample', 'sg', 'hs', 'accuracy', 'analogy_acc'])
+if report_inited:
+    reporter.writerow(['epoch', 'size', 'window', 'negative', 'min_count', 'alpha', 'sample', 'sg', 'hs', 'accuracy', 'analogy_acc'])
 params = []
 for window in [2, 5, 20, 50, 200, 500]:
     for negative in [2 , 5, 50]:
@@ -112,7 +115,7 @@ for param_idx, param in enumerate(params):
     hs = param['hs']
 
     callback = MyCallback(reporter, param)
-    corpusw2v.model = Word2Vec.load('mode_with_vocab.bin')
+    corpusw2v.model = Word2Vec.load(reader.get_tmp_filepath('mode_with_vocab.bin'))
     corpusw2v.model.window = window
     corpusw2v.model.negative = negative
     corpusw2v.model.ns_exponent = ns_exponent
