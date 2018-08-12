@@ -106,6 +106,22 @@ class WikiPagePreparator:
                 for w, _ in words:
                     f.write(w + '\n')
 
+    # poems -> poem lemms
+    def prepare_best_164443(self, reader: DataReader):
+        all_len = 0
+        for _ in reader.read_best_164443():
+            all_len += 1
+        i = 0
+        with open('best_164443_lemms.csv', 'w') as f:
+            writer = csv.writer(f)
+            for cb in reader.read_best_164443():
+                title = cb.get_title()
+                content = "\n".join([" ".join(line) for line in cb.get_sentence_lemms()])
+                row = [title, content]
+                writer.writerow(row)
+                i += 1
+                if i % 1000 == 0: print("%d of %d" % (i, all_len))
+
 
 def process_wiki_pages_stems_chunk(input_filepath, output_filepath, start, end, lines, stem_name):
     print("I should read %d-%d and write to %s" % (start, end, output_filepath))

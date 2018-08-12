@@ -48,14 +48,16 @@ corpusw2v.model.build_vocab(corpusw2v.sentences())
 corpusw2v.model.save(reader.get_tmp_filepath('mode_with_vocab.bin'))
 
 class MyCallback(CallbackAny2Vec):
-    def on_train_begin(self, model, reporter, param):
+    def __init__(self, reporter, param):
+        self.reporter = reporter
+        self.param = param
+
+    def on_train_begin(self, model):
         self.epoch_number = 1
         self.start_time = time.time()
         self.max_accuracy = -1
         self.max_accuracy_epoch = 0
         self.full_duration_secods = None
-        self.reporter = reporter
-        self.param = param
 
     def on_epoch_begin(self, model):
         self.epoch_start_time = time.time()

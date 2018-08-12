@@ -59,8 +59,47 @@ class ContentBase(Topic):
                 words = get_cyrillic_words(line)
                 yield [lemma(w) for w in words]
 
+# content -> str
 class ContentBaseImpl(namedtuple('ContentBaseImpl', ['title', 'content']), ContentBase):
     pass
+
+# sentences -> List[List[str]]
+class ContentBaseImpl2(namedtuple('ContentBaseImpl', ['title', 'sentences']), ContentBase):
+    title: str
+    sentences: List[List[str]]
+
+    def get_sentence_lemms(self) -> Iterator[List[str]]:
+        return self.sentences
+
+    def get_cyrillic_lines(self) -> Iterator[str]:
+        for words in self.sentences:
+            yield " ".join(words)
+
+    def get_all_lines(self) -> Iterator[str]:
+        for words in self.sentences:
+            yield " ".join(words)
+
+    def get_cyrillic_words(self) -> Iterator[str]:
+        for words in self.sentences:
+            for word in words:
+                yield word
+
+# words -> List[str]
+class ContentBaseImpl3(namedtuple('ContentBaseImpl', ['title', 'words']), ContentBase):
+    title: str
+    words: List[str]
+
+    def get_sentence_lemms(self) -> Iterator[List[str]]:
+        raise RuntimeError('ha only words')
+
+    def get_cyrillic_lines(self) -> Iterator[str]:
+        raise RuntimeError('ha only words')
+
+    def get_all_lines(self) -> Iterator[str]:
+        raise RuntimeError('ha only words')
+
+    def get_cyrillic_words(self) -> Iterator[str]:
+        return self.words
 
 class Poet(NamedTuple):
     id: str

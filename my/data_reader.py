@@ -253,7 +253,7 @@ class DataReader:
 
 
     # https://github.com/DenisVorotyntsev/StihiData
-    def read_best_164443(self) -> Iterator[Topic]:
+    def read_best_164443(self) -> Iterator[ContentBase]:
         with open(os.path.join('data', 'best_164443.csv')) as f:
             reader = csv.reader(f, delimiter=',')
             next(reader) # skip header
