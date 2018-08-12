@@ -21,7 +21,7 @@ from scipy.spatial.distance import cosine
 from nltk.tokenize import word_tokenize
 from gensim.models import KeyedVectors
 
-class Phonetic(object):
+class Phonetic0(object):
     """Объект для работы с фонетическими формами слова"""
 
     def __init__(self, accent_file, vowels='уеыаоэёяию'):
@@ -130,7 +130,7 @@ class Generator1:
         # Шаблоны стихов: строим их на основе собраний сочинений от организаторов
         self.template_loader = PoemTemplateLoader(self.reader.read_classic_poems())
         # Словарь ударений: берется из локального файла, который идет вместе с решением
-        self.phonetic = Phonetic('data/words_accent.json.bz2')
+        self.phonetic = Phonetic0('data/words_accent.json.bz2')
         # Словарь слов-кандидатов по фонетическим формам: строится из набора данных SDSJ 2017
         self.word_by_form = self.reader.form_dictionary_from_csv(self.phonetic)
         self.corpusw2v = CorpusW2v(WikiCorpus(self.reader, 'lemm'), self.reader)
