@@ -261,6 +261,15 @@ class DataReader:
                 name, content = line
                 yield ContentBaseImpl(name, content)
 
+    # sentences -> List[List[lemma: str]]
+    def read_best_164443_lemms(self) -> Iterator[ContentBase]:
+        with open(os.path.join('data', 'best_164443_lemms.csv')) as f:
+            reader = csv.reader(f, delimiter=',')
+            for line in reader:
+                name, content = line
+                sentences = [l.split(' ') for l in content.splitlines()]
+                yield ContentBaseImpl2(name, sentences)
+
 class OpCorpus(Corpus):
     def __init__(self, reader: DataReader):
         super().__init__('opcorpora', reader.read_opcorpora)

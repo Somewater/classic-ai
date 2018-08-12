@@ -112,7 +112,7 @@ class WikiPagePreparator:
         for _ in reader.read_best_164443():
             all_len += 1
         i = 0
-        with open('best_164443_lemms.csv', 'w') as f:
+        with open('data/best_164443_lemms.csv', 'w') as f:
             writer = csv.writer(f)
             for cb in reader.read_best_164443():
                 title = cb.get_title()
