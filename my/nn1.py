@@ -1,5 +1,6 @@
 from keras import backend, Sequential
 from keras.layers import LSTM, TimeDistributed, Dense, Activation, Embedding
+from keras.models import load_model
 from typing import Callable
 import numpy as np
 
@@ -69,8 +70,11 @@ class NN1:
         X, y = self.prepare_data(max_line_length, all_lines_count, self.lines(10000))
         self.nn.fit(X, y, batch_size=128, epochs=1)
 
+    def save(self):
+        self.nn.save('tmp/nn1.hdf5')
+
     def load(self):
-        pass
+        self.nn = load_model('tmp/nn1.hdf5')
 
     def generate_line(self):
         pass
