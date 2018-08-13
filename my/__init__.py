@@ -5,6 +5,7 @@ from .data_helper import DataHelper
 from .data_preparation import WikiPagePreparator
 from .corpus_w2v import CorpusW2v
 from .nn1 import NN1
+from .nn2 import NN2
 from .phonetic import Phonetic
 from .word import Word
 from .ortho_dict import OrthoDict

@@ -34,6 +34,7 @@ class NN1:
         train_x = np.zeros([sentence_len, max_sentence_length], dtype=np.int32)
         train_y = np.zeros([sentence_len], dtype=np.int32)
         for i, line in enumerate(lines):
+            line = ['помнить', 'чудный']
             for t, word in enumerate(line[:-1]):
                 train_x[i, t] = self.word2idx(word)
             train_y[i] = self.word2idx(line[-1])
@@ -55,19 +56,20 @@ class NN1:
                     if not limit is None:
                         i += 1
                         if i > limit:
-                            break
+                            return
 
     def train(self):
+        limit = 1000
         all_lines_count = 0
         max_line_length = 0
-        for line in self.lines(10000):
+        for line in self.lines(limit):
             l = len(line)
             if l > max_line_length:
                 max_line_length = l
             all_lines_count += 1
         if self.nn is None:
             self.create_model(self.w2v.model.wv.syn0)
-        X, y = self.prepare_data(max_line_length, all_lines_count, self.lines(10000))
+        X, y = self.prepare_data(max_line_length, all_lines_count, self.lines(limit))
         self.nn.fit(X, y, batch_size=128, epochs=1)
 
     def save(self):
@@ -76,5 +78,20 @@ class NN1:
     def load(self):
         self.nn = load_model('tmp/nn1.hdf5')
 
-    def generate_line(self):
-        pass
+    def generate_line(self, text, num_generated=10):
+        def sample(preds, temperature=1.0):
+            if temperature <= 0:
+                return np.argmax(preds)
+            preds = np.asarray(preds).astype('float64')
+            preds = np.log(preds) / temperature
+            exp_preds = np.exp(preds)
+            preds = exp_preds / np.sum(exp_preds)
+            probas = np.random.multinomial(1, preds, 1)
+            return np.argmax(probas)
+
+        word_idxs = [self.word2idx(word) for word in text.lower().split()]
+        for i in range(num_generated):
+            prediction = self.nn.predict(x=np.array(word_idxs))
+            idx = sample(prediction[-1], temperature=0.7)
+            word_idxs.append(idx)
+        return ' '.join(self.idx2word(idx) for idx in word_idxs)
