@@ -16,7 +16,7 @@ logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=lo
 reader = DataReader()
 generator = Generator1(logging.getLogger('generator'), reader)
 preparator = WikiPagePreparator()
-freq = Frequency()
+freq = Frequency(reader)
 
 corpus = WikiCorpus(reader, type='lemm')
 corpusw2v = CorpusW2v(corpus, reader)

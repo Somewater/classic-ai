@@ -78,7 +78,7 @@ class NN1:
     def load(self):
         self.nn = load_model('tmp/nn1.hdf5')
 
-    def generate_line(self, text, num_generated=10):
+    def generate_line(self, text = 'помнить', num_generated=10):
         def sample(preds, temperature=1.0):
             if temperature <= 0:
                 return np.argmax(preds)

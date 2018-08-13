@@ -75,7 +75,7 @@ class NN2:
     def load(self):
         self.nn = load_model('tmp/nn2.hdf5')
 
-    def generate_line(self, words = 'чудный'):
+    def generate_line(self, words = 'помнить'):
         if isinstance(words, str):
             words = words.split(' ')
         words = words[:self.max_sentence_length]
