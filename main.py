@@ -16,11 +16,15 @@ logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=lo
 reader = DataReader()
 generator = Generator1(logging.getLogger('generator'), reader)
 preparator = WikiPagePreparator()
+freq = Frequency()
 
 corpus = WikiCorpus(reader, type='lemm')
 corpusw2v = CorpusW2v(corpus, reader)
 
 corpusw2v.load()
-nn = NN2(reader, corpusw2v)
+nn1 = NN1(reader, corpusw2v)
+nn2 = NN2(reader, corpusw2v)
+nn3 = NN3(reader, corpusw2v)
+nn4 = NN4(reader, corpusw2v)
 
 ortho = OrthoDict()
