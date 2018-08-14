@@ -49,9 +49,10 @@ if not os.path.isfile(reader.get_tmp_filepath('mode_with_vocab.bin')):
     corpusw2v.model.save(reader.get_tmp_filepath('mode_with_vocab.bin'))
 
 class MyCallback(CallbackAny2Vec):
-    def __init__(self, reporter, param):
+    def __init__(self, reporter, param, reporter_fileobj):
         self.reporter = reporter
         self.param = param
+        self.reporter_fileobj = reporter_fileobj
 
     def on_train_begin(self, model):
         self.epoch_number = 1
@@ -81,6 +82,7 @@ class MyCallback(CallbackAny2Vec):
                self.param['min_count'], self.param['alpha'], self.param['sample'], self.param['sg'], self.param['hs'],
                accuracy, analogy_acc]
         self.reporter.writerow([str(i) for i in row])
+        self.reporter_fileobj.flush()
 
         self.epoch_number += 1
 
@@ -88,7 +90,8 @@ class MyCallback(CallbackAny2Vec):
         self.full_duration_secods = time.time() - self.start_time
 
 report_inited = not os.path.isfile('report.csv')
-reporter = csv.writer(open('report.csv', 'a'))
+reporter_fileobj = open('report.csv', 'a')
+reporter = csv.writer(reporter_fileobj)
 if report_inited:
     reporter.writerow(['epoch', 'size', 'window', 'negative', 'min_count', 'alpha', 'sample', 'sg', 'hs', 'accuracy', 'analogy_acc'])
 params = []
@@ -114,7 +117,7 @@ for param_idx, param in enumerate(params):
     sg = param['sg']
     hs = param['hs']
 
-    callback = MyCallback(reporter, param)
+    callback = MyCallback(reporter, param, reporter_fileobj)
     corpusw2v.model = Word2Vec.load(reader.get_tmp_filepath('mode_with_vocab.bin'))
     corpusw2v.model.window = window
     corpusw2v.model.negative = negative
