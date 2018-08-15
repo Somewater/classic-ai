@@ -32,15 +32,16 @@ class NN2:
 
     def prepare_data(self, lines: Iterator[List[str]], lines_len: int):
         train_x = np.zeros([lines_len, self.max_sentence_length, self.emdedding_size], dtype=np.float32)
-        train_y = np.zeros([lines_len, 1, self.emdedding_size], dtype=np.float32)
+        train_y = np.zeros([lines_len, self.max_sentence_length, self.emdedding_size], dtype=np.float32)
         i = 0
         for line in lines:
-            line = ['помнить', 'чудный']
+            #line = ['помнить', 'чудный']
             j = 0
             line = line[:self.max_sentence_length]
+            padding = 1 + self.max_sentence_length - len(line)
             for word in line[:-1]:
                 # TODO: handle words out of model
-                train_x[i, j, :] = self.w2v.model.wv[word]
+                train_x[i, j + padding, :] = self.w2v.model.wv[word]
                 j += 1
             train_y[i, 0, :] = self.w2v.model.wv[line[-1]]
             i += 1
@@ -81,9 +82,10 @@ class NN2:
         words = words[:self.max_sentence_length]
         x = np.zeros([len(words), self.max_sentence_length, self.emdedding_size,], dtype=np.float32)
         i = 0
+        padding = self.max_sentence_length - len(words)
         for word in words:
             # TODO: handle words out of model
-            x[0, i, :] = self.w2v.model.wv[word]
+            x[0, i + padding, :] = self.w2v.model.wv[word]
             i += 1
         preds = self.nn.predict(x)
         v = preds[0][0]
