@@ -68,7 +68,7 @@ class NN1:
                             return
 
     def train(self):
-        limit = 1000
+        limit = 100
         max_line_length = 10
         self.max_sentence_length = max_line_length
         if self.nn is None:
