@@ -1,6 +1,7 @@
 from keras import backend, Sequential
-from keras.layers import LSTM, TimeDistributed, Dense, Activation, Embedding
+from keras.layers import LSTM, TimeDistributed, Dense, Activation, Embedding, Dropout
 from keras.models import load_model
+from keras.utils import to_categorical
 from typing import Callable
 import numpy as np
 
@@ -16,14 +17,20 @@ class NN1:
 
     def create_model(self, pretrained_weights):
         vocab_size, emdedding_size = pretrained_weights.shape
+        self.vocab_size = vocab_size
+        return_sequences = False
         nn = Sequential()
-        nn.add(Embedding(input_dim=vocab_size, output_dim=emdedding_size, weights=[pretrained_weights], trainable=False))
+        nn.add(Embedding(input_dim=vocab_size, output_dim=emdedding_size, weights=[pretrained_weights]))
         #nn.add(self.w2v.model.wv.get_keras_embedding())
-        nn.add(LSTM(units=500))
-        nn.add(Dense(units=vocab_size))
-        #nn.add(TimeDistributed(Dense(vocab_size)))
+        nn.add(LSTM(units=emdedding_size, return_sequences=False))
+        #nn.add(LSTM(units=emdedding_size, return_sequences=return_sequences))
+        if return_sequences:
+            nn.add(TimeDistributed(Dense(vocab_size)))
+        else:
+            nn.add(Dense(vocab_size))
+        #nn.add(Dropout(0.5))
         nn.add(Activation('softmax'))
-        nn.compile(optimizer='adam', loss='sparse_categorical_crossentropy')
+        nn.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy', 'categorical_accuracy'])
         self.nn = nn
 
     def word2idx(self, word):
@@ -32,17 +39,16 @@ class NN1:
     def idx2word(self, idx):
         return self.w2v.model.wv.index2word[idx]
 
-    def prepare_data(self, max_sentence_length: int, sentence_len: int, lines: Iterator[List[str]]):
-        train_x = np.zeros([sentence_len, max_sentence_length], dtype=np.float32)
-        train_y = np.zeros([sentence_len], dtype=np.float32)
+    def prepare_data(self, max_sentence_length: int, sentence_count: int, lines: Iterator[List[str]]):
+        train_x = np.zeros([sentence_count, max_sentence_length], dtype=np.int32)
+        train_y = np.zeros([sentence_count], dtype=np.int32)
         for i, line in enumerate(lines):
+            line = line[:max_sentence_length]
             #line = ['помнить', 'чудный']
-            padding = 1 + max_sentence_length - len(line)
+            padding = 0 # 1 + max_sentence_length - len(line)
             for t, word in enumerate(line[:-1]):
                 train_x[i, t + padding] = self.word2idx(word)
             train_y[i] = self.word2idx(line[-1])
-        print('train_x shape:', train_x.shape)
-        print('train_y shape:', train_y.shape)
         return train_x, train_y
 
     def lines(self, limit = None) -> Iterator[List[str]]:
@@ -58,21 +64,16 @@ class NN1:
                     yield words
                     if not limit is None:
                         i += 1
-                        if i > limit:
+                        if i >= limit:
                             return
 
     def train(self):
         limit = 1000
-        all_lines_count = 0
-        max_line_length = 0
-        for line in self.lines(limit):
-            l = len(line)
-            if l > max_line_length:
-                max_line_length = l
-            all_lines_count += 1
+        max_line_length = 10
+        self.max_sentence_length = max_line_length
         if self.nn is None:
             self.create_model(self.w2v.model.wv.syn0)
-        X, y = self.prepare_data(max_line_length, all_lines_count, self.lines(limit))
+        X, y = self.prepare_data(max_line_length, limit, self.lines(limit))
         self.nn.fit(X, y, batch_size=128, epochs=1)
 
     def save(self):
