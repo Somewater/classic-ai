@@ -44,9 +44,9 @@ logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=lo
 reader = DataReader()
 corpus = WikiCorpus(reader, type='lemm')
 corpusw2v = CorpusW2v(corpus, reader, vector_size=size)
-if not os.path.isfile(reader.get_tmp_filepath('mode_with_vocab.bin')):
-    corpusw2v.model.build_vocab(corpusw2v.sentences())
-    corpusw2v.model.save(reader.get_tmp_filepath('mode_with_vocab.bin'))
+#if not os.path.isfile(reader.get_tmp_filepath('mode_with_vocab.bin')):
+#    corpusw2v.model.build_vocab(corpusw2v.sentences())
+#    corpusw2v.model.save(reader.get_tmp_filepath('mode_with_vocab.bin'))
 
 class MyCallback(CallbackAny2Vec):
     def __init__(self, reporter, param, reporter_fileobj):
@@ -118,7 +118,8 @@ for param_idx, param in enumerate(params):
     hs = param['hs']
 
     callback = MyCallback(reporter, param, reporter_fileobj)
-    corpusw2v.model = Word2Vec.load(reader.get_tmp_filepath('mode_with_vocab.bin'))
+    #corpusw2v.model = Word2Vec.load(reader.get_tmp_filepath('mode_with_vocab.bin'))
+    corpusw2v = CorpusW2v(corpus, reader, vector_size=size)
     corpusw2v.model.window = window
     corpusw2v.model.negative = negative
     corpusw2v.model.ns_exponent = ns_exponent
