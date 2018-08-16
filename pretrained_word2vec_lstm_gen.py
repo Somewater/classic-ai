@@ -26,8 +26,6 @@ max_sentence_len = 40
 docs = []
 i = 0
 for p in reader.read_best_164443():
-  i += 1
-  if i > 1000: break
   for l in  p.get_cyrillic_lines():
     l = l.strip()
     if l:
@@ -38,7 +36,7 @@ sentences = [[word for word in doc.lower().translate(string.punctuation).split()
 print('Num sentences:', len(sentences))
 
 print('\nTraining word2vec...')
-word_model = gensim.models.Word2Vec(sentences, size=100, min_count=1, window=5, iter=100)
+word_model = gensim.models.Word2Vec(sentences, size=100, min_count=3, window=5, iter=100)
 pretrained_weights = word_model.wv.syn0
 vocab_size, emdedding_size = pretrained_weights.shape
 print('Result embedding shape:', pretrained_weights.shape)
@@ -99,7 +97,11 @@ def on_epoch_end(epoch, _):
     sample = generate_next(text, temperature=0.3)
     print('%s... -> %s' % (text, sample))
 
-model.fit(train_x, train_y,
-          batch_size=128,
-          epochs=20,
-          callbacks=[LambdaCallback(on_epoch_end=on_epoch_end)])
+i = 0
+while True:
+  model.fit(train_x, train_y,
+            batch_size=128,
+            epochs=20,
+            callbacks=[LambdaCallback(on_epoch_end=on_epoch_end)])
+  i += 1
+  print('fitting %d completed' % i)
