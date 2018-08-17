@@ -99,7 +99,7 @@ for window in [2, 5, 20, 50, 200, 500]:
     for negative in [2 , 5, 50]:
         for min_count in [5, 20, 100]:
             for alpha in [0.0005, 0.001, 0.002, 0.005]:
-                for sample in [0.001, 0.005, 0.01]:
+                for sample in [0.001]:
                     for sg in [0, 1]:
                         for hs in [0, 1]:
                             params.append({'size': size, 'window': window, 'negative': negative,
