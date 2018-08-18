@@ -102,11 +102,10 @@ for window in [2, 5, 20, 50, 200, 500]:
                 for sample in [0.0001, 0.001]:
                     for sg in [0, 1]:
                         for hs in [0, 1]:
-                            if hs == 1 and negative > 0:
-                                continue
-                            params.append({'size': size, 'window': window, 'negative': negative,
-                                           'min_count': min_count, 'alpha': alpha, 'sample': sample,
-                                           'sg': sg, 'hs': hs})
+                            if (hs == 1 and negative == 0) or (hs == 0 and negative > 0):
+                                params.append({'size': size, 'window': window, 'negative': negative,
+                                               'min_count': min_count, 'alpha': alpha, 'sample': sample,
+                                               'sg': sg, 'hs': hs})
 
 
 for param_idx, param in enumerate(params):
