@@ -27,4 +27,4 @@ nn2 = NN2(reader, corpusw2v)
 nn3 = NN3(reader, corpusw2v)
 nn4 = NN4(reader, corpusw2v)
 
-ortho = OrthoDict()
+ortho = OrthoDict(freq)

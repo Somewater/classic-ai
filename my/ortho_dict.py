@@ -8,6 +8,7 @@ import os
 from threading import Lock
 import logging
 import time
+import pickle
 
 
 class Hagen:
@@ -105,19 +106,20 @@ class Zalizniak:
                                 self.words.append(word)
 
 class WordResult(object):
-    def __init__(self, word: Word):
+    def __init__(self, word: Word, fuzzy = None, freq = None):
         self.word = word
-        self.fuzzy = None
+        self.fuzzy = fuzzy
+        self.freq = freq
 
     def with_fuzzy(self, fuzzy: int) -> 'WordResult':
         self.fuzzy = fuzzy
         return self
 
     def __str__(self):
-        return "<WordResult %s, fuzzy=%s>" % (self.word.stressed(), repr(self.fuzzy))
+        return "<WordResult %s, fuzzy=%s, freq=%d>" % (self.word.stressed(), repr(self.fuzzy), self.freq or -1)
 
     def __repr__(self):
-        return "<WordResult %s, fuzzy=%s>" % (self.word.stressed(), repr(self.fuzzy))
+        return "<WordResult %s, fuzzy=%s, freq=%d>" % (self.word.stressed(), repr(self.fuzzy), self.freq or -1)
 
 class OrthoDict:
     """Thread-safe implementation"""
@@ -126,12 +128,12 @@ class OrthoDict:
     FUZZIES = [0, Phonetic.FUZZY_CONS_STUNING, Phonetic.FUZZY_CUTOFF_FINAL_CONS,
                Phonetic.FUZZY_CONS_STUNING + Phonetic.FUZZY_CUTOFF_FINAL_CONS]
 
-    def __init__(self):
-        self.dictionaries = [Lopatin(), Hagen(), Zalizniak()]
-        self.frequency = None
+    def __init__(self, frequency):
+        self.frequency = frequency
         self.name = 'compound'
 
-    def load(self):
+    def load_from_dictionaries(self):
+        self.dictionaries = [Lopatin(), Hagen(), Zalizniak()]
         logging.info("Dictionaries loading started")
         already_added_words = dict()
         for dictionary in self.dictionaries:
@@ -165,16 +167,26 @@ class OrthoDict:
             words.append(w)
         logging.info("Stress finding map prepared")
 
-    def set_loaded(self):
-        with self._globalLock:
-            self._loaded = True
-            logging.info("Dictionary ready")
+    def load(self):
+        with open('data/ortho.pickle', 'rb') as f:
+            _rhymes_by_phonetic_after_stress, _text_to_words, words = pickle.load(f)
+            self._rhymes_by_phonetic_after_stress = _rhymes_by_phonetic_after_stress
+            self._text_to_words = _text_to_words
+            self.words = words
 
-    def loaded(self):
-        with self._globalLock:
-            return self._loaded
+    def save(self):
+        if self._rhymes_by_phonetic_after_stress is None:
+            raise RuntimeError("Dictionaries not loaded yet")
+        with open('data/ortho.pickle', 'wb') as f:
+            pickle.dump([self._rhymes_by_phonetic_after_stress, self._text_to_words, self.words], f)
 
-    def find_all_rhymes(self, text: Union[str, Word]) -> List[WordResult]:
+    def rhymes(self, text: str, limit: int = 10000) -> Optional[List[WordResult]]:
+        word = self.find_word(text)
+        if word:
+            results = self.find_all_rhymes(word, limit)
+            return sorted(results, key=lambda wr: (wr.fuzzy, -wr.freq))
+
+    def find_all_rhymes(self, text: Union[str, Word], limit: int = None) -> List[WordResult]:
         if isinstance(text, Word):
             word = text
         else:
@@ -185,10 +197,12 @@ class OrthoDict:
             postfix = word.phonetic_after_stress(fuzzy=fuzzy)
             results: List[Word] = self._rhymes_by_phonetic_after_stress[fuzzy].get(postfix) or []
             for result in results:
-                if added_words.get(result) is None:
-                    all_results.append(WordResult(result).with_fuzzy(fuzzy))
+                if added_words.get(result) is None and result.phonetic() != word.phonetic():
+                    all_results.append(WordResult(result, fuzzy, self.frequency.freq(result)))
                     added_words[result] = fuzzy
-            if len(all_results) >= 10:
+                    if limit and len(all_results) >= limit:
+                        break
+            if limit and len(all_results) >= limit:
                 break
         return [w for w in all_results if w.word.phonetic() != word.phonetic()]
 
@@ -198,7 +212,7 @@ class OrthoDict:
             if len(variants) == 1:
                 return variants[0]
             elif len(variants) == 2 and self._high_frequency_ratio(variants[0], variants[1]):
-                if self.frequency.get_frequency(variants[0]) > self.frequency.get_frequency(variants[1]):
+                if self.frequency.freq(variants[0]) > self.frequency.freq(variants[1]):
                     return variants[0]
                 else:
                     return variants[1]
@@ -244,18 +258,9 @@ class OrthoDict:
         logging.info("Rhyme map with fuzzy=%d generated in %.1f seconds" % (fuzzy, time.time() - start))
         return d
 
-    # check word pairs like  "Ганимед", "ганимед"
-    def _mirror_words(self, word1, word2):
-        if len(word1) != len(word2):
-            return False
-        elif word1[0] != word2[0] and word1[0].lower() == word2[0].lower() and word1[1:] == word2[1:]:
-            return True
-        else:
-            return False
-
     def _high_frequency_ratio(self, w1: Word, w2: Word) -> bool:
-        f1 = self.frequency.get_frequency(w1)
-        f2 = self.frequency.get_frequency(w2)
+        f1 = self.frequency.freq(w1)
+        f2 = self.frequency.freq(w2)
         if f1 == 0 and f2 == 0:
             return False
         elif f1 == 0 or f2 == 0:
@@ -264,3 +269,21 @@ class OrthoDict:
         if ratio < 1:
             ratio = 1 / ratio
         return ratio >= 2
+
+    def __create_word__(self, text: str) -> Word:
+        """Create word from text"""
+        word = None
+        if "'" in text:
+            word = Word.from_stressed(text, self.name, stressed_char="'", stress_char_after=True)
+
+        if not word:
+            text_lower = text.lower()
+            first_vowel_index = text_lower.find('ё')
+            if first_vowel_index < 0:
+                first_vowel_index = 0
+                for idx, c in enumerate(text_lower):
+                    if c in Phonetic.VOWELS:
+                        first_vowel_index = idx
+                        break
+            word = Word(text_lower, stressed_index=first_vowel_index, dictionary_name='none')
+        return word
