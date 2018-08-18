@@ -96,12 +96,14 @@ if report_inited:
     reporter.writerow(['epoch', 'size', 'window', 'negative', 'min_count', 'alpha', 'sample', 'sg', 'hs', 'accuracy', 'analogy_acc'])
 params = []
 for window in [2, 5, 20, 50, 200, 500]:
-    for negative in [2 , 5, 50]:
+    for negative in [0, 2 , 5, 50]:
         for min_count in [5, 20, 100]:
             for alpha in [0.0005, 0.001, 0.002, 0.005]:
                 for sample in [0.0001, 0.001]:
                     for sg in [0, 1]:
                         for hs in [0, 1]:
+                            if hs == 1 and negative > 0:
+                                continue
                             params.append({'size': size, 'window': window, 'negative': negative,
                                            'min_count': min_count, 'alpha': alpha, 'sample': sample,
                                            'sg': sg, 'hs': hs})
@@ -129,6 +131,7 @@ for param_idx, param in enumerate(params):
     corpusw2v.model.sg = sg
     corpusw2v.model.hs = hs
     corpusw2v.model.min_count = min_count
+    corpusw2v.model.max_final_vocab = 100000
 
     corpusw2v.model.callbacks = [callback]
 
