@@ -95,7 +95,6 @@ class Generator2:
         self.ortho = ortho
         self.freq = freq
         self.morph = None
-        self.w2v_window = 2.0
         self.started = False
 
     def start(self):
@@ -202,7 +201,7 @@ class Generator2:
     def _sort_candidates_by_params(self, tuple: Tuple[str, str, float, float, float, object, object, str, WordResult]):
         word, lemm, w2v_distance, sound_distance, freq, tag, word_result = tuple
         # normalize
-        w2v_distance = w2v_distance / self.w2v_window
+        w2v_distance = w2v_distance
         sound_distance = sound_distance / 2.5
         freq = log(self.freq.max_freq()) / log(freq) if freq >= 2 else log(self.freq.max_freq()) / 0.5
         if word_result:
@@ -247,3 +246,4 @@ class Generator2:
                 else:
                     generated_line += word + ' '
             result.append(generated_line.strip())
+        return result
