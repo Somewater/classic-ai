@@ -95,7 +95,10 @@ class CorpusW2v(object):
             return correct / (correct + incorrect)
 
     def word_vector(self, lemm: str):
-        return self.model[lemm] if lemm in self.model else None
+        profiler.enter('word_vector')
+        r =  self.model.wv.word_vec(lemm) if lemm in self.model.wv else None
+        profiler.exit()
+        return r
 
     def text_vector(self, text: str, stemmer: Callable[[str], str] = None):
         """Вектор текста, получается путем усреднения векторов всех слов в тексте"""

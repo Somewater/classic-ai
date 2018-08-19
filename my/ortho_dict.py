@@ -142,6 +142,8 @@ class OrthoDict:
             dictionary.load()
             logging.info("Dictionary %s loaded" % dictionary.__class__)
             for word in dictionary.words:
+                if len(word.text) < 3:
+                    continue
                 key = word.__hash__()
                 word0: Word = already_added_words.get(key)
                 if word0:

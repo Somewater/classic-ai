@@ -25,6 +25,8 @@ from math import *
 from my.ortho_dict import WordResult
 import time
 
+from my.word import WordTag
+
 
 class Phonetic0_2(object):
     """Объект для работы с фонетическими формами слова"""
@@ -33,15 +35,18 @@ class Phonetic0_2(object):
         self.ortho = ortho
 
     def get_form(self, text: Union[str, Word]):
+        profiler.enter('get_form')
         if isinstance(text, Word):
             word = text
         else:
             word = self.ortho.find_word(text)
         if word:
+            profiler.exit()
             return (word.vowels_count(), word.stressed_vowel_index())
         else:
             word_syllables = sum((ch in Phonetic.VOWELS) for ch in text)
             word_accent = (word_syllables + 1) // 2
+            profiler.exit()
             return (word_syllables, word_accent)
 
     def sound_distance(self, word1, word2):
@@ -113,30 +118,44 @@ class Generator2:
         if not self.ortho.loaded():
             self.ortho.load()
             self.log.info('Ortho dictionary ready')
-        # Словарь слов-кандидатов по фонетическим формам: строится из набора данных SDSJ 2017
-        self._generate_word_by_form()
-        self.log.info('Word by form ready')
         self.corpusw2v = CorpusW2v(WikiCorpus(self.reader, 'lemm'), self.reader)
         self.corpusw2v.load()
         self.log.info('Word2Vec ready')
+        for w in self.ortho.words:
+            w.vector = self.corpusw2v.word_vector(w.lemma)
+        self.log.info('Word2Vec vectors applied to words')
+        # Словарь слов-кандидатов по фонетическим формам: строится из набора данных SDSJ 2017
         self.stop_words = self.reader.read_stop_words()
+        self._generate_word_by_form()
+        self.log.info('Word by form ready')
         self.morph = pymorphy2.MorphAnalyzer()
         self.started = True
 
     def _generate_word_by_form(self):
         self.word_by_form = defaultdict(set)
+        self.word_by_form_by_pos = defaultdict(set)
+        self.word_by_form_by_pos_by_case = defaultdict(set)
         for word in self.ortho.words:
-            form = self.phonetic.get_form(word)
-            self.word_by_form[form].add(word)
+            if len(word.text) > 2 and not word.text in self.stop_words and not word.lemma in self.stop_words:
+                form = self.phonetic.get_form(word)
+                self.word_by_form[form].add(word)
+                pos = word.tag.POS
+                if pos:
+                    self.word_by_form_by_pos[(form, pos)].add(word)
+                    case = word.tag.case
+                    if case:
+                        self.word_by_form_by_pos_by_case[(form, pos, case)].add(word)
 
     def generate(self, poet_id: str, seed: str) -> PoemResult:
         if not self.started:
             self.start()
+        profiler.enter('generate')
         start_time = time.time()
         poet_id = Poet.recover(poet_id)
         request = PoemRequest(Poet.by_poet_id(poet_id), seed)
 
         # выбираем шаблон на основе случайного стихотворения из корпуса
+        profiler.enter('header')
         poem_template = self.template_loader.get_random_template(request.poet)
         template = poem_template.get_template()
         diff8 = len(template) - 8
@@ -148,20 +167,16 @@ class Generator2:
         # оцениваем word2vec-вектор темы
         seed_mean_vector = self.corpusw2v.mean_vector(request.seed)
         used_replacement_lemms = set()
+        profiler.exit()
 
         # заменяем слова в шаблоне на более релевантные теме
-        profiler.enter('generate')
         for li, line in enumerate(template):
-            if li >= 8:
-                break
-            line_len = len(line)
             last_word_idx = self._last_cyrillic_word_idx(line)
             for ti, token in enumerate(line):
-                token = unify_chars(token)
                 word = token.lower()
-                word_tag = self.morph.tag(word)[0]
                 last_word = ti == last_word_idx
                 if len(word) > 2 and not (word in self.stop_words) and is_cyrillic_word(word):
+                    word_tag = self._word_tag(self.morph.tag(word)[0])
                     if last_word:
                         profiler.enter('rhymes')
                         replacements = self.ortho.rhymes(word)
@@ -170,7 +185,7 @@ class Generator2:
                         replacements_params: List[Tuple[Word, float, float, WordResult]] = [
                             (
                                 wr.word,
-                                self.corpusw2v.distance(seed_mean_vector, self.corpusw2v.word_vector(wr.word.lemma)),
+                                self.corpusw2v.distance(seed_mean_vector, wr.word.vector),
                                 self.phonetic.sound_distance(wr.word.text, word),
                                 wr
                             )
@@ -183,11 +198,11 @@ class Generator2:
                         replacements_params: List[Tuple[Word, float, float, WordResult]] = [
                             (
                                 wrd,
-                                self.corpusw2v.distance(seed_mean_vector, self.corpusw2v.word_vector(wrd.lemma)),
+                                self.corpusw2v.distance(seed_mean_vector, wrd.vector),
                                 self.phonetic.sound_distance(wrd.text, word),
                                 None
                             )
-                            for wrd in self.word_by_form[self.phonetic.get_form(token)]
+                            for wrd in self._find_by_form(word, word_tag)
                             if self._filter_candidates_by_params(wrd, word_tag, word) and wrd.lemma not in used_replacement_lemms
                         ]
                         profiler.exit()
@@ -210,8 +225,19 @@ class Generator2:
                           round(time.time() - start_time, 3),
                           offset)
 
+    def _find_by_form(self, word: str, word_tag: WordTag):
+        form = self.phonetic.get_form(word)
+        if word_tag.POS:
+            if word_tag.case:
+                return self.word_by_form_by_pos_by_case[(form, word_tag.POS, word_tag.case)]
+            else:
+                return self.word_by_form_by_pos[(form, word_tag.POS)]
+        else:
+            return self.word_by_form[form]
+
     # less is BETTER
     def _sort_candidates_by_params(self, tuple: Tuple[Word, float, float, WordResult]):
+        profiler.enter('sort_candidates_by_params')
         word, w2v_distance, sound_distance, word_result = tuple
         # normalize
         w2v_distance = w2v_distance
@@ -219,16 +245,16 @@ class Generator2:
         freq = word.frequency
         freq = log(self.freq.max_freq()) / log(freq) if freq >= 2 else log(self.freq.max_freq()) / 0.5
         if word_result:
+            profiler.exit()
             return w2v_distance  + word_result.fuzzy * 0.1 + freq * 0.05
         else:
+            profiler.exit()
             return w2v_distance  + sound_distance * 0.1 + freq * 0.05
 
     def _filter_candidates_by_params(self, word: Word, orig_word_tag: object, orig_word: str):
-        if len(word.text) < 3:
-            return False
-        if word.text in self.stop_words or word.lemma in self.stop_words:
-            return False
+        profiler.enter('filter_candidates_by_params')
         if word.text == orig_word or word.lemma == orig_word:
+            profiler.exit()
             return False
         tag = word.tag
         if (orig_word_tag.POS and tag.POS != orig_word_tag.POS) or \
@@ -237,7 +263,9 @@ class Generator2:
                 (orig_word_tag.number and tag.number != orig_word_tag.number) or \
                 (orig_word_tag.gender and tag.gender != orig_word_tag.gender) or \
                 (orig_word_tag.person and tag.person != orig_word_tag.person):
+            profiler.exit()
             return False
+        profiler.exit()
         return True
 
     def _last_cyrillic_word_idx(self, line: List[str]):
@@ -262,3 +290,14 @@ class Generator2:
                     generated_line += word
             result.append(generated_line.strip())
         return result
+
+    # WordTag = namedtuple('WordTag', ['POS', 'case', 'tense', 'number', 'person', 'gender'])
+    def _word_tag(self, tag) -> WordTag:
+        return WordTag(str_or_none(tag.POS), str_or_none(tag.case), str_or_none(tag.tense), str_or_none(tag.number),
+                       str_or_none(tag.person), str_or_none(tag.gender))
+
+def str_or_none(s):
+    if s is None:
+        return None
+    else:
+        return str(s)
