@@ -1,4 +1,5 @@
 import time
+from collections import Counter
 
 class _ProfEntry:
     def __init__(self, name: str, parent: 'Profiler'):
@@ -14,7 +15,8 @@ class _ProfEntry:
 class Profiler:
     def __init__(self, disabled: bool = False):
         self.disabled = disabled
-        self._data = dict()
+        self._timing = dict()
+        self._counter = Counter()
         self._context = []
         self._start_time_by_context = dict()
         self.separator = '/'
@@ -38,16 +40,18 @@ class Profiler:
             prev_context_name = self.separator.join(self._context)
             self._context.pop()
             delta = time.time() - self._start_time_by_context[prev_context_name]
-            self._data[prev_context_name] = (self._data.get(prev_context_name) or 0.0) + delta
+            self._timing[prev_context_name] = (self._timing.get(prev_context_name) or 0.0) + delta
+            self._counter[prev_context_name] += 1
 
     def clear(self):
-        self._data.clear()
+        self._timing.clear()
         self._start_time_by_context.clear()
-        self._start_time_by_context.clear()
+        self._context.clear()
+        self._counter.clear()
 
     def tree(self):
         root_tree = dict()
-        for path, value in self._data.items():
+        for path, value in self._timing.items():
             path = path.split(self.separator)
             tree = root_tree
             for p in path:
@@ -56,7 +60,8 @@ class Profiler:
                 else:
                     tree[p] = dict()
                     tree = tree[p]
-            tree['__value__'] = value
+            tree['__timing__'] = value
+            tree['__counts__'] = self._counter[path]
         return root_tree
 
     def print(self):
