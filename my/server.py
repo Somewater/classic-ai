@@ -25,6 +25,7 @@ def generate(poet_id):
         abort(404)
 
 # HOTFIX
+profiler.disabled = True
 from gensim.models.callbacks import CallbackAny2Vec
 class MyCallback(CallbackAny2Vec):
     pass
