@@ -30,15 +30,15 @@ class Profiler:
         if not self.disabled:
             if self.separator in name:
                 raise RuntimeError("Unsupported context name, don't use '%s': %s" % (self.separator, name))
-            self.context.append(name)
-            self._start_time[self.separator.join(self._context)] = time.time()
+            self._context.append(name)
+            self._start_time_by_context[self.separator.join(self._context)] = time.time()
 
     def exit(self):
         if not self.disabled:
             prev_context_name = self.separator.join(self._context)
             self._context.pop()
             delta = time.time() - self._start_time_by_context[prev_context_name]
-            self._data = (self._data.get(prev_context_name) or 0.0) + delta
+            self._data[prev_context_name] = (self._data.get(prev_context_name) or 0.0) + delta
 
     def clear(self):
         self._data.clear()
@@ -51,13 +51,17 @@ class Profiler:
             path = path.split(self.separator)
             tree = root_tree
             for p in path:
-                if not p in tree:
+                if p in tree:
+                    tree = tree[p]
+                else:
                     tree[p] = dict()
                     tree = tree[p]
             tree['__value__'] = value
-        return tree
+        return root_tree
 
     def print(self):
         def traverse(tree):
             pass
         traverse(self.tree())
+
+profiler = Profiler()
