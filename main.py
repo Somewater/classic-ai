@@ -14,9 +14,11 @@ class MyCallback(CallbackAny2Vec):
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 
 reader = DataReader()
-generator = Generator1(logging.getLogger('generator'), reader)
-preparator = WikiPagePreparator()
 freq = Frequency(reader)
+ortho = OrthoDict(freq)
+generator1 = Generator1(logging.getLogger('generator1'), reader)
+generator2 = Generator2(logging.getLogger('generator2'), reader, ortho, freq)
+preparator = WikiPagePreparator()
 
 corpus = WikiCorpus(reader, type='lemm')
 corpusw2v = CorpusW2v(corpus, reader)
@@ -26,5 +28,3 @@ nn1 = NN1(reader, corpusw2v)
 nn2 = NN2(reader, corpusw2v)
 nn3 = NN3(reader, corpusw2v)
 nn4 = NN4(reader, corpusw2v)
-
-ortho = OrthoDict(freq)

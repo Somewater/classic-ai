@@ -131,6 +131,7 @@ class OrthoDict:
     def __init__(self, frequency):
         self.frequency = frequency
         self.name = 'compound'
+        self.words = None
 
     def load_from_dictionaries(self):
         self.dictionaries = [Lopatin(), Hagen(), Zalizniak()]
@@ -173,6 +174,9 @@ class OrthoDict:
             self._rhymes_by_phonetic_after_stress = _rhymes_by_phonetic_after_stress
             self._text_to_words = _text_to_words
             self.words = words
+
+    def loaded(self):
+        return self.words is not None
 
     def save(self):
         if self._rhymes_by_phonetic_after_stress is None:

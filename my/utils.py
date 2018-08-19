@@ -1,4 +1,4 @@
-from typing import List, Iterator
+from typing import List, Iterator, Optional
 import re
 from nltk.stem.snowball import RussianStemmer
 from pymystem3 import Mystem
@@ -42,6 +42,12 @@ def get_cyrillic_lines(content: str) -> Iterator[str]:
                     break
             if cyrillic:
                 yield line
+
+def is_cyrillic_word(word: str) -> bool:
+    for c in word:
+        if not is_cyrillic(c):
+            return False
+    return True
 
 def unify_chars(line: str) -> str:
     # return line.replace('_', '').replace(STRESS, '').replace(NBSP, ' ') \
@@ -93,6 +99,34 @@ def get_cyrillic_words(line: str) -> List[str]:
             if word_chars:
                 append_word(words, word_chars, wrong_word)
             wrong_word = False
+
+    if word_chars:
+        append_word(words, word_chars, wrong_word)
+
+    return words
+
+def get_cyrillic_words_and_punctuations(line: str) -> List[str]:
+    words = []
+    word_chars = []
+    wrong_word = False
+    def append_word(words: List[str], word_chars: List[str], wrong_word: bool):
+        word = "".join(word_chars)
+        word_chars.clear()
+        if word[0] == '-' or word[-1] == '-':
+            wrong_word = True
+        if wrong_word:
+            pass
+        else:
+            words.append(word)
+
+    for char in unify_chars(line):
+        if is_cyrillic(char) or char == '-':
+            word_chars.append(char)
+        else:
+            if word_chars:
+                append_word(words, word_chars, wrong_word)
+            if char != ' ' and char in AllowedPunctuation:
+                words.append(char)
 
     if word_chars:
         append_word(words, word_chars, wrong_word)

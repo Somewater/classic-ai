@@ -15,3 +15,4 @@ from .nn4 import NN4
 from .ortho_dict import OrthoDict
 
 from .generator1 import Generator1
+from .generator2 import Generator2

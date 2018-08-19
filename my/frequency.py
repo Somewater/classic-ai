@@ -8,6 +8,7 @@ class Frequency(object):
     def __init__(self, reader: DataReader):
         self.reader = reader
         self.word_count = None
+        self._max_freq = None
 
     def load(self):
         with open('data/frequency.pickle', 'rb') as f:
@@ -29,3 +30,8 @@ class Frequency(object):
         if isinstance(word, Word):
             word = word.text
         return self.word_count.get(word.lower()) or 0.0
+
+    def max_freq(self):
+        if self._max_freq is None:
+            self._max_freq = max(self.word_count.values())
+        return self._max_freq

@@ -244,9 +244,7 @@ class DataReader:
         word_by_form = defaultdict(set)
         for token in corpora_tokens:
             if token.isalpha():
-                word_syllables = phonetic.syllables_count(token)
-                word_accent = phonetic.accent_syllable(token)
-                form = (word_syllables, word_accent)
+                form = phonetic.get_form(token)
                 word_by_form[form].add(token)
 
         return word_by_form

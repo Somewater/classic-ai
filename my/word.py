@@ -58,6 +58,19 @@ class Word(object):
         syllables, stressed_syllable_index = Phonetic.syllables(self.text, self.stressed_index)
         return stressed_syllable_index
 
+    def vowels_count(self) -> int:
+        return sum((c in Phonetic.VOWELS) for c in self.text)
+
+    def stressed_vowel_index(self) -> int:
+        vowel_counter = 0
+        i = 0
+        for c in self.text:
+            if i == self.stressed_index:
+                return vowel_counter
+            i += 1
+            if c in Phonetic.VOWELS:
+                vowel_counter += 1
+
     def __str__(self):
         return "<Word %s>" % (self.stressed())
 
