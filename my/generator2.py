@@ -22,6 +22,9 @@ from gensim.models import KeyedVectors
 import pymorphy2
 from math import *
 
+from my.ortho_dict import WordResult
+
+
 class Phonetic0_2(object):
     """Объект для работы с фонетическими формами слова"""
 
@@ -126,16 +129,14 @@ class Generator2:
             self.start()
         poet_id = Poet.recover(poet_id)
         request = PoemRequest(Poet.by_poet_id(poet_id), seed)
-        # poet = Poet.by_poet_id(poet_id)
-        # poems = self.poems_by_poet[poet]
-        # poem = choice(poems)
-        # words = self.corpusw2v.find_similar_words(request.get_cyrillic_words(), lemma)
-        # lines = generate_text_lines(text2template(poem.content, lemma), build_corpus(words))
-        # return PoemResult(request, poem, lines)
 
         # выбираем шаблон на основе случайного стихотворения из корпуса
         poem_template = self.template_loader.get_random_template(request.poet)
         template = poem_template.get_template()
+        diff8 = len(template) - 8
+        if diff8 >= 2:
+            offset = random.randint(0, int(diff8 / 2)) * 2
+            template = template[offset: (offset + 8)]
 
         # оцениваем word2vec-вектор темы
         seed_mean_vector = self.corpusw2v.mean_vector(request.seed)
@@ -145,55 +146,72 @@ class Generator2:
             if li >= 8:
                 break
             line_len = len(line)
+            last_word_idx = self._last_cyrillic_word_idx(line)
             for ti, token in enumerate(line):
                 word = token.lower()
                 word_tag = self.morph.tag(word)[0]
-                last_word = ti == line_len - 1
+                last_word = ti == last_word_idx
                 if len(word) > 2 and not (word in self.stop_words) and is_cyrillic_word(word):
                     if last_word:
                         # TODO: подбор на основе рифмы
-                        new_word = word
-                    else:
-                        form = self.phonetic.get_form(token)
-                        replacements_dist_sound = [
-                            (w, lemm, distance, sound, freq, tag)
-                            for w, lemm, distance, sound, freq, tag in [
+                        replacements = self.ortho.rhymes(word)
+                        replacements_params = [
+                            (w, lemm, distance, sound, freq, tag, wr)
+                            for w, lemm, distance, sound, freq, tag, wr in [
                                 (w,
                                  lemm,
                                  self.corpusw2v.distance(seed_mean_vector, self.corpusw2v.word_vector(lemm)),
                                  self.phonetic.sound_distance(w, word),
                                  self.freq.freq(lemm),
-                                 self.morph.tag(w)[0])
-                                for w, lemm in [(w, lemma(w)) for w in self.word_by_form[form]]
+                                 self.morph.tag(w)[0],
+                                 wr)
+                                for w, lemm, wr in [(wr.word.text, lemma(wr.word.text), wr) for wr in replacements]
                             ]
-                            if self._filter_candidates_by_params(w, lemm, distance, sound, freq, tag, word_tag, word)
+                            if self._filter_candidates_by_params(w, lemm, distance, sound, freq, tag, wr, word_tag, word)
                         ]
-                        if replacements_dist_sound:
-                            new_word = min(replacements_dist_sound,
-                                           key=self._sort_candidates_by_params)[0]
-                            #replacements_dist_sound = sorted(replacements_dist_sound, key=self._sort_candidates_by_params) #  TODO: remove mE!!!
-                            #import ipdb; ipdb.set_trace()
-                        else:
-                            new_word = word
+                    else:
+                        replacements = self.word_by_form[self.phonetic.get_form(token)]
+                        replacements_params = [
+                            (w, lemm, distance, sound, freq, tag, wr_none)
+                            for w, lemm, distance, sound, freq, tag, wr_none in [
+                                (w,
+                                 lemm,
+                                 self.corpusw2v.distance(seed_mean_vector, self.corpusw2v.word_vector(lemm)),
+                                 self.phonetic.sound_distance(w, word),
+                                 self.freq.freq(lemm),
+                                 self.morph.tag(w)[0],
+                                 None)
+                                for w, lemm in [(w, lemma(w)) for w in replacements]
+                            ]
+                            if self._filter_candidates_by_params(w, lemm, distance, sound, freq, tag, wr_none, word_tag, word)
+                        ]
+
+                    if replacements_params:
+                        new_word = min(replacements_params, key=self._sort_candidates_by_params)[0]
+                        #replacements_params = sorted(replacements_params, key=self._sort_candidates_by_params) #  TODO: remove mE!!!
+                        #import ipdb; ipdb.set_trace()
+                    else:
+                        new_word = word
                 else:
                     new_word = word
                 template[li][ti] = new_word
 
-        # собираем получившееся стихотворение из слов
-        generated_poem_lines = [' '.join([token for token in line]) for line in template]
-        return PoemResult(request, poem_template.poem, generated_poem_lines)
+        return PoemResult(request, poem_template.poem, self._lines_from_template(template))
 
     # less is BETTER
-    def _sort_candidates_by_params(self, tuple: Tuple[str, str, float, float, float, object, object, str]):
-        word, lemm, w2v_distance, sound_distance, freq, tag = tuple
+    def _sort_candidates_by_params(self, tuple: Tuple[str, str, float, float, float, object, object, str, WordResult]):
+        word, lemm, w2v_distance, sound_distance, freq, tag, word_result = tuple
         # normalize
         w2v_distance = w2v_distance / self.w2v_window
         sound_distance = sound_distance / 2.5
         freq = log(self.freq.max_freq()) / log(freq) if freq >= 2 else log(self.freq.max_freq()) / 0.5
-        return w2v_distance  + sound_distance * 0.1 + freq * 0.05
+        if word_result:
+            return w2v_distance  + word_result.fuzzy * 0.1 + freq * 0.05
+        else:
+            return w2v_distance  + sound_distance * 0.1 + freq * 0.05
 
     def _filter_candidates_by_params(self, word: str, lemm: str, w2v_distance: float, sound_distance: float, freq: int,
-                                     tag: object, orig_word_tag: object, orig_word: str):
+                                     tag: object, wr: Optional[WordResult], orig_word_tag: object, orig_word: str):
         if len(word) < 3:
             return False
         if word in self.stop_words or lemm in self.stop_words:
@@ -201,6 +219,31 @@ class Generator2:
         if word == orig_word or lemm == orig_word:
             return False
         if (orig_word_tag.POS and tag.POS != orig_word_tag.POS) or \
-                (orig_word_tag.case and tag.case != orig_word_tag.case):
+                (orig_word_tag.case and tag.case != orig_word_tag.case) or \
+                (orig_word_tag.tense and tag.tense != orig_word_tag.tense) or \
+                (orig_word_tag.number and tag.number != orig_word_tag.number) or \
+                (orig_word_tag.person and tag.person != orig_word_tag.person):
             return False
         return True
+
+    def _last_cyrillic_word_idx(self, line: List[str]):
+        i = 0
+        result = None
+        for w in line:
+            if is_cyrillic_word(w):
+                result = i
+            i += 1
+        return result
+
+    def _lines_from_template(self, template: List[List[str]]) -> List[str]:
+        result = []
+        for line in template:
+            generated_line = ''
+            for i, word in enumerate(line):
+                if is_cyrillic_word(word):
+                    if i == 0:
+                        word = word[0].upper() + word[1:]
+                    generated_line += ' ' + word
+                else:
+                    generated_line += word + ' '
+            result.append(generated_line.strip())

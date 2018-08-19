@@ -184,11 +184,13 @@ class OrthoDict:
         with open('data/ortho.pickle', 'wb') as f:
             pickle.dump([self._rhymes_by_phonetic_after_stress, self._text_to_words, self.words], f)
 
-    def rhymes(self, text: str, limit: int = 10000) -> Optional[List[WordResult]]:
+    def rhymes(self, text: str, limit: int = 10000) -> List[WordResult]:
         word = self.find_word(text)
         if word:
             results = self.find_all_rhymes(word, limit)
             return sorted(results, key=lambda wr: (wr.fuzzy, -wr.freq))
+        else:
+            return []
 
     def find_all_rhymes(self, text: Union[str, Word], limit: int = None) -> List[WordResult]:
         if isinstance(text, Word):
