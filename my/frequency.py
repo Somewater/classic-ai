@@ -15,6 +15,7 @@ class Frequency(object):
     def load(self):
         with open('data/frequency.pickle', 'rb') as f:
             self.word_count = pickle.load(f)
+            self._max_freq = max(self.word_count.values())
 
     def load_from_dictionary(self):
         wc_lists = defaultdict(list)
@@ -39,6 +40,7 @@ class Frequency(object):
         for w, cs in wc_lists.items():
             wc[w] = sum(cs) / len(cs)
         self.word_count = wc
+        self._max_freq = max(self.word_count.values())
 
     def save(self):
         if self.word_count is None:
@@ -49,12 +51,10 @@ class Frequency(object):
     def freq(self, word: Union[str, Word]) -> float:
         if self.word_count is None:
             print("Frequency loading...")
-            self.word_count = self.reader.load_word_count()
+            self.load()
         if isinstance(word, Word):
             word = word.text
         return self.word_count.get(word.lower()) or 0.0
 
     def max_freq(self):
-        if self._max_freq is None:
-            self._max_freq = max(self.word_count.values())
         return self._max_freq

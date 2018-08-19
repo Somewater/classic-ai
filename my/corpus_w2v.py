@@ -4,7 +4,7 @@ from typing import Callable, Tuple, Set, Dict
 from my import DataHelper
 from my.model import *
 from gensim.models import Word2Vec, FastText
-from my import DataReader
+from my import DataReader, profiler
 from my.utils import stem, lemma, MakeIter
 import os
 from gensim.corpora import WikiCorpus
@@ -13,6 +13,7 @@ import numpy as np
 import multiprocessing
 from gensim.models.callbacks import CallbackAny2Vec
 from gensim import utils, matutils
+from gensim.similarities.index import AnnoyIndexer
 
 class CorpusW2v(object):
     def __init__(self, corpus: Corpus, reader: DataReader, vector_size: int = 100):
@@ -23,6 +24,7 @@ class CorpusW2v(object):
         self.model = Word2Vec(size=vector_size, window=5, min_count=5, workers=multiprocessing.cpu_count(),
                               max_final_vocab=100000, hs=1)
         self.helper = DataHelper(reader)
+        self.indexer = None
 
     def sentences(self, stemm: bool = False, lemmatize: bool = False) -> Iterator[Iterator[str]]:
         i = 0
@@ -47,13 +49,19 @@ class CorpusW2v(object):
                          end_alpha=min_alpha,
                          report_delay=60.0)
 
+    def build_save_indexer(self):
+        self.indexer = AnnoyIndexer(self.model, 300)
+        self.indexer.save(self.model_filepath + '.index', protocol=3)
+
     def save(self):
         self.model.save(self.model_filepath)
 
     def load(self):
         self.model = Word2Vec.load(self.model_filepath)
         self.model.init_sims(replace=True)
-        #self.lemma2word = {word.split('_')[0]: word for word in self.model.wv.index2word}
+        if os.path.exists(self.model_filepath + '.index'):
+            self.indexer = AnnoyIndexer()
+            self.indexer.load(self.model_filepath + '.index')
 
     def find_similar_words(self, words: List[str], stemmer: Callable[[str], str] = None, topn=1000) -> Iterator[str]:
         word_in_corpus = []
@@ -63,7 +71,7 @@ class CorpusW2v(object):
             if word in self.model.wv:
                 word_in_corpus.append(word)
         if word_in_corpus:
-            for w, score in self.model.wv.most_similar(positive=word_in_corpus, topn=topn):
+            for w, score in self.model.wv.most_similar(positive=word_in_corpus, topn=topn, indexer=self.indexer):
                 yield w
 
     def accuracy(self) -> Tuple[float, Dict[str, Tuple[int, int]]]:
@@ -86,10 +94,8 @@ class CorpusW2v(object):
         if correct + incorrect > 0:
             return correct / (correct + incorrect)
 
-    def word_vector(self, word):
-        word = lemma(word)
-        #word = self.lemma2word.get(lemma)
-        return self.model[word] if word in self.model else None
+    def word_vector(self, lemm: str):
+        return self.model[lemm] if lemm in self.model else None
 
     def text_vector(self, text: str, stemmer: Callable[[str], str] = None):
         """Вектор текста, получается путем усреднения векторов всех слов в тексте"""
@@ -106,9 +112,13 @@ class CorpusW2v(object):
         return matutils.unitvec(np.array(vectors).mean(axis=0)).astype('float32')
 
     def distance(self, vec1, vec2):
+        profiler.enter('w2v.distance')
         if vec1 is None or vec2 is None:
+            profiler.exit()
             return 2
-        return cosine(vec1, vec2)
+        r = cosine(vec1, vec2)
+        profiler.exit()
+        return r
 
     @staticmethod
     def create_fasttext_model(self):

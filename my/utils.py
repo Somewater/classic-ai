@@ -2,6 +2,7 @@ from typing import List, Iterator, Optional
 import re
 from nltk.stem.snowball import RussianStemmer
 from pymystem3 import Mystem
+from my.profiler import profiler
 
 def is_cyrillic(char: str) -> bool:
     o = ord(char)
@@ -137,13 +138,17 @@ def stem(word: str) -> str:
     return rus_stemmer.stem(word)
 
 def lemma(word: str) -> str:
+    profiler.enter('lemma')
     try:
         for w in rus_lemmatizer.lemmatize(word):
+            profiler.exit()
             return w
     except BrokenPipeError:
         rus_lemmatizer.start()
         for w in rus_lemmatizer.lemmatize(word):
+            profiler.exit()
             return w
+    profiler.exit()
     return word
 
 def lemm_or_stem(word: str) -> str:

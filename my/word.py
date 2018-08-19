@@ -1,6 +1,9 @@
 from typing import Optional, Dict, Union
-from my import Phonetic
+from my import Phonetic, lemma
+from collections import namedtuple
 
+
+WordTag = namedtuple('WordTag', ['POS', 'case', 'tense', 'number', 'person', 'gender'])
 
 class Word(object):
     STRESSED_CHAR = chr(769)
@@ -11,12 +14,18 @@ class Word(object):
     normal_form: Optional['Word'] = None
     is_normal_form: Optional[bool] = None
     frequency: float = 0
+    lemma: str
+    tag: WordTag
+
 
     def __init__(self, text: str, stressed_index: int, dictionary_name: str):
         self.text = text
         self.stressed_index = stressed_index
         self.dictionary_name = dictionary_name
         self._cached_phonetic_fuzzy = None
+        self.lemma = None
+        self.tag = None
+        self.vector = None
 
     def stressed(self) -> str:
         stressed = self.text[self.stressed_index]
@@ -89,7 +98,7 @@ class Word(object):
                       dictionary_name: str,
                       stressed_char: str,
                       stress_char_after) -> Optional['Word']:
-        text = stressed_text.replace(stressed_char, '')
+        text = stressed_text.lower().replace(stressed_char, '')
         if stress_char_after:
             stressed_index = stressed_text.find(stressed_char) - 1
         else:

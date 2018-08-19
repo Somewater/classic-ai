@@ -1,5 +1,6 @@
 from typing import Optional, Dict, Union
-from my import Phonetic, Word
+from my import Phonetic, Word, lemma
+from my.word import WordTag
 import os
 from functools import lru_cache
 from typing import List, Set, Union, Optional
@@ -9,7 +10,7 @@ from threading import Lock
 import logging
 import time
 import pickle
-
+import pymorphy2
 
 class Hagen:
     STRESSED_CHAR = "'"
@@ -167,6 +168,27 @@ class OrthoDict:
                 self._text_to_words[w.text.lower()] = words
             words.append(w)
         logging.info("Stress finding map prepared")
+        for w in self.words:
+            w.lemma = lemma(w.text.lower())
+        logging.info('Lemmas prepared')
+        morph = pymorphy2.MorphAnalyzer()
+        def str_or_none(s):
+            if s is None:
+                return None
+            else:
+                return str(s)
+        for w in self.words:
+            tag = morph.tag(w.text)[0]
+            w.tag = WordTag(str_or_none(tag.POS), str_or_none(tag.case), str_or_none(tag.tense),
+                            str_or_none(tag.number), str_or_none(tag.person), str_or_none(tag.gender))
+        logging.info('Tags prepared')
+        for w in self.words:
+            w.frequency = self.frequency.freq(w.text)
+        logging.info('Frequency prepared')
+        for w in self.words:
+            w.normal_form = None
+            w.is_normal_form = None
+            w.dictionary_name = None
 
     def load(self):
         with open('data/ortho.pickle', 'rb') as f:

@@ -152,6 +152,7 @@ class PoemResult(NamedTuple):
     request: PoemRequest
     source: Poem
     lines: List[str]
+    time_seconds: float
 
     def content(self):
         return '\n'.join(self.lines)
