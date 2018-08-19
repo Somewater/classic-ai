@@ -158,7 +158,7 @@ class PoemResult(NamedTuple):
         return '\n'.join(self.lines)
 
     def __repr__(self):
-        s = 'PoemResult(request=%s\n' % repr(self.request)
+        s = 'PoemResult(request=%s, time=%f\n' % (repr(self.request), self.time_seconds)
         for line in get_lines(self.source.content):
             s += '\t' + line + '\n'
         s += '>>>\n'

@@ -146,6 +146,7 @@ class Generator2:
 
         # оцениваем word2vec-вектор темы
         seed_mean_vector = self.corpusw2v.mean_vector(request.seed)
+        used_replacement_lemms = set()
 
         # заменяем слова в шаблоне на более релевантные теме
         profiler.enter('generate')
@@ -172,7 +173,7 @@ class Generator2:
                                 wr
                             )
                             for wr in replacements
-                            if self._filter_candidates_by_params(wr.word, word_tag, word)
+                            if self._filter_candidates_by_params(wr.word, word_tag, word) and wr.word.lemma not in used_replacement_lemms
                         ]
                         profiler.exit()
                     else:
@@ -185,12 +186,14 @@ class Generator2:
                                 None
                             )
                             for wrd in self.word_by_form[self.phonetic.get_form(token)]
-                            if self._filter_candidates_by_params(wrd, word_tag, word)
+                            if self._filter_candidates_by_params(wrd, word_tag, word) and wrd.lemma not in used_replacement_lemms
                         ]
                         profiler.exit()
 
                     if replacements_params:
-                        new_word = min(replacements_params, key=self._sort_candidates_by_params)[0].text
+                        new_wrd = min(replacements_params, key=self._sort_candidates_by_params)[0]
+                        used_replacement_lemms.add(new_wrd.lemma)
+                        new_word = new_wrd.text
                         #replacements_params = sorted(replacements_params, key=self._sort_candidates_by_params) #  TODO: remove mE!!!
                         #import ipdb; ipdb.set_trace()
                     else:

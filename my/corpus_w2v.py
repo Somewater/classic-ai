@@ -108,7 +108,7 @@ class CorpusW2v(object):
         return np.mean(word_vectors, axis=0)
 
     def mean_vector(self, text: str):
-        vectors = [self.model.wv.word_vec(lemma(w), use_norm=True) for w in get_cyrillic_words(text)]
+        vectors = [self.model.wv.word_vec(lemma(w), use_norm=True) for w in get_cyrillic_words(text) if w in self.model.wv]
         return matutils.unitvec(np.array(vectors).mean(axis=0)).astype('float32')
 
     def distance(self, vec1, vec2):
