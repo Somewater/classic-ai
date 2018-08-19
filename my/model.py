@@ -153,17 +153,22 @@ class PoemResult(NamedTuple):
     source: Poem
     lines: List[str]
     time_seconds: float
+    source_offset: int
 
     def content(self):
         return '\n'.join(self.lines)
 
     def __repr__(self):
-        s = 'PoemResult(request=%s, time=%f\n' % (repr(self.request), self.time_seconds)
-        for line in get_lines(self.source.content):
-            s += '\t' + line + '\n'
+        s = 'PoemResult(request=%s, time=%f, offset=%d\n' % (repr(self.request), self.time_seconds, self.source_offset)
+        for i, line in enumerate(get_lines(self.source.content)):
+            source_line = i >= self.source_offset and i < self.source_offset + len(self.lines)
+            if source_line:
+                s += '>     ' + line + '\n'
+            else:
+                s += '      ' + line + '\n'
         s += '>>>\n'
         for line in self.lines:
-            s += '\t' + line + '\n'
+            s += '      ' + line + '\n'
         s += ')\n'
         return s
 

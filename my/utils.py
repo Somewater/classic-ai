@@ -46,7 +46,7 @@ def get_cyrillic_lines(content: str) -> Iterator[str]:
 
 def is_cyrillic_word(word: str) -> bool:
     for c in word:
-        if not is_cyrillic(c):
+        if not is_cyrillic(c) and c != '-':
             return False
     return True
 

@@ -140,6 +140,7 @@ class Generator2:
         poem_template = self.template_loader.get_random_template(request.poet)
         template = poem_template.get_template()
         diff8 = len(template) - 8
+        offset = 0
         if diff8 >= 2:
             offset = random.randint(0, int(diff8 / 2)) * 2
             template = template[offset: (offset + 8)]
@@ -156,6 +157,7 @@ class Generator2:
             line_len = len(line)
             last_word_idx = self._last_cyrillic_word_idx(line)
             for ti, token in enumerate(line):
+                token = unify_chars(token)
                 word = token.lower()
                 word_tag = self.morph.tag(word)[0]
                 last_word = ti == last_word_idx
@@ -197,14 +199,16 @@ class Generator2:
                         #replacements_params = sorted(replacements_params, key=self._sort_candidates_by_params) #  TODO: remove mE!!!
                         #import ipdb; ipdb.set_trace()
                     else:
-                        new_word = word
+                        new_word = token
                 else:
-                    new_word = word
+                    new_word = token
                 print('%s -> %s' % (word, new_word))
                 template[li][ti] = new_word
         profiler.exit()
 
-        return PoemResult(request, poem_template.poem, self._lines_from_template(template), round(time.time() - start_time, 3))
+        return PoemResult(request, poem_template.poem, self._lines_from_template(template),
+                          round(time.time() - start_time, 3),
+                          offset)
 
     # less is BETTER
     def _sort_candidates_by_params(self, tuple: Tuple[Word, float, float, WordResult]):
@@ -255,6 +259,6 @@ class Generator2:
                         word = word[0].upper() + word[1:]
                     generated_line += ' ' + word
                 else:
-                    generated_line += word + ' '
+                    generated_line += word
             result.append(generated_line.strip())
         return result
