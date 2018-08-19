@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify, abort
 import locale
 import my
 import logging
-from my import DataReader
+from my import *
 
 app = Flask(__name__)
 generator: my.Generator1 = None
@@ -24,8 +24,15 @@ def generate(poet_id):
     except KeyError:
         abort(404)
 
+# HOTFIX
+from gensim.models.callbacks import CallbackAny2Vec
+class MyCallback(CallbackAny2Vec):
+    pass
 
 if __name__ == '__main__':
-    generator = my.Generator1(logging.getLogger('generator'), DataReader())
+    reader = DataReader()
+    freq = Frequency(reader)
+    ortho = OrthoDict(freq)
+    generator = my.Generator2(logging.getLogger('generator'), reader, ortho, freq)
     generator.start()
     app.run(host='0.0.0.0', port=8000)
