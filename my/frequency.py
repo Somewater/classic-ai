@@ -2,6 +2,8 @@ from typing import Dict, Union
 
 from my import DataReader, Word
 import pickle
+from collections import defaultdict, Counter
+from my.utils import lemma
 
 
 class Frequency(object):
@@ -15,7 +17,25 @@ class Frequency(object):
             self.word_count = pickle.load(f)
 
     def load_from_dictionary(self):
-        self.word_count = self.reader.load_word_count()
+        wc_lists = defaultdict(list)
+        for need_lemmatization, generator in [(False, self.reader.read_freq_2011), (False, self.reader.read_freq_hagen), (True, self.reader.read_freq_litc_win)]:
+            wc = generator()
+            if need_lemmatization:
+                wc2 = Counter()
+                for w, ipm in wc.items():
+                    wc2[lemma(w.lower())] += ipm
+                wc = wc2
+            else:
+                wc2 = Counter()
+                for w, ipm in wc.items():
+                    wc2[w.lower()] += ipm
+                wc = wc2
+            for w, ipm in wc.items():
+                wc_lists[w].append(ipm)
+        wc = dict()
+        for w, cs in wc_lists.items():
+            wc[w] = sum(cs) / len(cs)
+        self.word_count = wc
 
     def save(self):
         if self.word_count is None:

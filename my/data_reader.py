@@ -180,6 +180,38 @@ class DataReader:
                 wc[text] = cnt
         return wc
 
+    # http://speakrus.ru/dict/index.htm
+    def read_freq_hagen(self) -> Dict[str, float]:
+        wc = dict()
+        with open(os.path.join('data', 'freq', 'hagen_freq_alph.txt'), encoding='windows-1251') as f:
+            for line in f:
+                r = line.split(' | ')
+                wc[r[1]] = float(r[3])
+        return wc
+
+    # http://dict.ruslang.ru/freq.php
+    def read_freq_2011(self) -> Dict[str, float]:
+        wc = dict()
+        header_readed = False
+        with open(os.path.join('data', 'freq', 'freqrnc2011.csv')) as f:
+            for line in f:
+                if header_readed:
+                    r = line.split('\t')
+                    wc[r[0]] = float(r[2])
+                else:
+                    header_readed = True
+        return wc
+
+    # http://speakrus.ru/dict/index.htm
+    def read_freq_litc_win(self) -> Dict[str, float]:
+        words_all = 2390000
+        wc = dict()
+        with open(os.path.join('data', 'freq', 'litc-win.txt'), encoding='windows-1251') as f:
+            for line in f:
+                r = line.split(' | ')
+                wc[line[8:]] = int(line[:7]) / words_all
+        return wc
+
     def save_word_count(self, wc: Dict[str, int], filepath: str = 'data/word_count.csv'):
         with open(filepath, 'w') as file:
             for w, c in sorted(wc.items(), key=lambda x: (-x[1], x[0].lower())):

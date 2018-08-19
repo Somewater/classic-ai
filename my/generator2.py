@@ -92,6 +92,7 @@ class Generator2:
         self.freq = freq
         self.morph = None
         self.w2v_window = 2.0
+        self.started = False
 
     def start(self):
         # Шаблоны стихов: строим их на основе собраний сочинений от организаторов
@@ -111,7 +112,7 @@ class Generator2:
         self.log.info('Word2Vec ready')
         self.stop_words = self.reader.read_stop_words()
         self.morph = pymorphy2.MorphAnalyzer()
-
+        self.started = True
 
     def _generate_word_by_form(self):
         self.word_by_form = defaultdict(set)
@@ -120,6 +121,8 @@ class Generator2:
             self.word_by_form[form].add(word.text.lower())
 
     def generate(self, poet_id: str, seed: str) -> PoemResult:
+        if not self.started:
+            self.start()
         poet_id = Poet.recover(poet_id)
         request = PoemRequest(Poet.by_poet_id(poet_id), seed)
         # poet = Poet.by_poet_id(poet_id)
@@ -158,7 +161,7 @@ class Generator2:
                                  lemm,
                                  self.corpusw2v.distance(seed_mean_vector, self.corpusw2v.word_vector(lemm)),
                                  self.phonetic.sound_distance(w, word),
-                                 self.freq.freq(word),
+                                 self.freq.freq(lemm),
                                  self.morph.tag(w)[0])
                                 for w, lemm in [(w, lemma(w)) for w in self.word_by_form[form]]
                             ]
@@ -168,10 +171,7 @@ class Generator2:
                             new_word = min(replacements_dist_sound,
                                            key=self._sort_candidates_by_params)[0]
                             replacements_dist_sound = sorted(replacements_dist_sound, key=self._sort_candidates_by_params) #  TODO: remove mE!!!
-                            sss = []
-                            for r in replacements_dist_sound: sss.append(r[3])
-                            print(word, len(replacements_dist_sound), np.mean(sss), np.median(sss), sep='\t')
-                            #import ipdb; ipdb.set_trace()
+                            import ipdb; ipdb.set_trace()
                         else:
                             new_word = word
                 else:
@@ -188,7 +188,7 @@ class Generator2:
         # normalize
         w2v_distance = w2v_distance / self.w2v_window
         sound_distance = sound_distance / 2.5
-        freq = freq / self.freq.max_freq()
+        freq = self.freq.max_freq() / freq if freq > 0 else 1000
         return w2v_distance  + sound_distance + freq
 
     def _filter_candidates_by_params(self, word: str, lemm: str, w2v_distance: float, sound_distance: float, freq: int,
