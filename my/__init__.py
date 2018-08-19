@@ -1,3 +1,4 @@
+from .profiler import Profiler
 from .data_reader import *
 from .phonetic import Phonetic
 from .model import *

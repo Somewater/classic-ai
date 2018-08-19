@@ -20,6 +20,7 @@ from scipy.spatial.distance import cosine
 from nltk.tokenize import word_tokenize
 from gensim.models import KeyedVectors
 import pymorphy2
+from math import *
 
 class Phonetic0_2(object):
     """Объект для работы с фонетическими формами слова"""
@@ -170,8 +171,8 @@ class Generator2:
                         if replacements_dist_sound:
                             new_word = min(replacements_dist_sound,
                                            key=self._sort_candidates_by_params)[0]
-                            replacements_dist_sound = sorted(replacements_dist_sound, key=self._sort_candidates_by_params) #  TODO: remove mE!!!
-                            import ipdb; ipdb.set_trace()
+                            #replacements_dist_sound = sorted(replacements_dist_sound, key=self._sort_candidates_by_params) #  TODO: remove mE!!!
+                            #import ipdb; ipdb.set_trace()
                         else:
                             new_word = word
                 else:
@@ -188,8 +189,8 @@ class Generator2:
         # normalize
         w2v_distance = w2v_distance / self.w2v_window
         sound_distance = sound_distance / 2.5
-        freq = self.freq.max_freq() / freq if freq > 0 else 1000
-        return w2v_distance  + sound_distance + freq
+        freq = log(self.freq.max_freq()) / log(freq) if freq >= 2 else log(self.freq.max_freq()) / 0.5
+        return w2v_distance  + sound_distance * 0.1 + freq * 0.05
 
     def _filter_candidates_by_params(self, word: str, lemm: str, w2v_distance: float, sound_distance: float, freq: int,
                                      tag: object, orig_word_tag: object, orig_word: str):

@@ -204,12 +204,22 @@ class DataReader:
 
     # http://speakrus.ru/dict/index.htm
     def read_freq_litc_win(self) -> Dict[str, float]:
-        words_all = 2390000
+        words_all = 2.390000
         wc = dict()
         with open(os.path.join('data', 'freq', 'litc-win.txt'), encoding='windows-1251') as f:
             for line in f:
                 r = line.split(' | ')
                 wc[line[8:]] = int(line[:7]) / words_all
+        return wc
+
+    def read_freq_wikipedia(self) -> Dict[str, float]:
+        words_all = 17118.429422
+        wc = dict()
+        with open(os.path.join('data', 'freq', 'wikipedia_freq_100k.txt')) as f:
+            for line in f:
+                cnt = int(line[:10])
+                text = line[11:].strip()
+                wc[text] = cnt / words_all
         return wc
 
     def save_word_count(self, wc: Dict[str, int], filepath: str = 'data/word_count.csv'):

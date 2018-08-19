@@ -18,7 +18,10 @@ class Frequency(object):
 
     def load_from_dictionary(self):
         wc_lists = defaultdict(list)
-        for need_lemmatization, generator in [(False, self.reader.read_freq_2011), (False, self.reader.read_freq_hagen), (True, self.reader.read_freq_litc_win)]:
+        for need_lemmatization, generator in [(False, self.reader.read_freq_2011),
+                                              (False, self.reader.read_freq_hagen),
+                                              (True, self.reader.read_freq_litc_win),
+                                              (False, self.reader.read_freq_wikipedia)]:
             wc = generator()
             if need_lemmatization:
                 wc2 = Counter()
