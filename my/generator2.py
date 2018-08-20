@@ -91,7 +91,8 @@ class Generator2:
     """
     Алгоритм генерации стихотворения на основе фонетических шаблонов
     """
-    poems_by_poet: Dict[Poet, List[Poem]]
+    BeforeSpaceChars = set(['«', "'", '"', '№'])
+    NoSpaceChars = set(['’', "'"])
 
     def __init__(self, log: Logger, reader: DataReader, ortho: OrthoDict, freq: Frequency):
         self.log = log
@@ -263,13 +264,28 @@ class Generator2:
         result = []
         for line in template:
             generated_line = ''
+            no_space_char = False
+            before_space_char = False
+            big_letter_after = False
             for i, word in enumerate(line):
                 if is_cyrillic_word(word):
-                    if i == 0:
+                    if i == 0 or big_letter_after:
                         word = word[0].upper() + word[1:]
-                    generated_line += ' ' + word
+                    if before_space_char or no_space_char:
+                        generated_line += word
+                    else:
+                        generated_line += ' ' + word
+                    before_space_char = False
+                    no_space_char = False
+                    big_letter_after = False
                 else:
-                    generated_line += word
+                    before_space_char = word in Generator2.BeforeSpaceChars
+                    if before_space_char:
+                        generated_line += ' ' + word
+                    else:
+                        no_space_char = word in Generator2.NoSpaceChars
+                        big_letter_after = word == '.'
+                        generated_line += word
             result.append(generated_line.strip())
         return result
 
