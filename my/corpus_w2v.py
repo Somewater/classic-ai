@@ -95,9 +95,7 @@ class CorpusW2v(object):
             return correct / (correct + incorrect)
 
     def word_vector(self, lemm: str):
-        profiler.enter('word_vector')
         r =  self.model.wv.word_vec(lemm) if lemm in self.model.wv else None
-        profiler.exit()
         return r
 
     def text_vector(self, text: str, stemmer: Callable[[str], str] = None):
@@ -115,12 +113,9 @@ class CorpusW2v(object):
         return matutils.unitvec(np.array(vectors).mean(axis=0)).astype('float32')
 
     def distance(self, vec1, vec2):
-        profiler.enter('w2v.distance')
         if vec1 is None or vec2 is None:
-            profiler.exit()
             return 2
         r = cosine(vec1, vec2)
-        profiler.exit()
         return r
 
     @staticmethod

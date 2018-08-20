@@ -35,31 +35,26 @@ class Phonetic0_2(object):
         self.ortho = ortho
 
     def get_form(self, text: Union[str, Word]):
-        profiler.enter('get_form')
         if isinstance(text, Word):
             word = text
         else:
             word = self.ortho.find_word(text)
         if word:
-            profiler.exit()
             return (word.vowels_count(), word.stressed_vowel_index())
         else:
             word_syllables = sum((ch in Phonetic.VOWELS) for ch in text)
             word_accent = (word_syllables + 1) // 2
-            profiler.exit()
             return (word_syllables, word_accent)
 
     def sound_distance(self, word1, word2):
         """Фонетическое растояние на основе расстояния Левенштейна по окончаниям
         (число несовпадающих символов на соответствующих позициях)"""
 
-        profiler.enter('sound_distance')
         suffix_len = 3
         suffix1 = (' ' * suffix_len + word1)[-suffix_len:]
         suffix2 = (' ' * suffix_len + word2)[-suffix_len:]
 
         distance = sum((ch1 != ch2) for ch1, ch2 in zip(suffix1, suffix2))
-        profiler.exit()
         return distance
 
 class PoemTemplate(namedtuple('PoemTemplate', ['poem']), ContentBase):
@@ -149,13 +144,11 @@ class Generator2:
     def generate(self, poet_id: str, seed: str) -> PoemResult:
         if not self.started:
             self.start()
-        profiler.enter('generate')
         start_time = time.time()
         poet_id = Poet.recover(poet_id)
         request = PoemRequest(Poet.by_poet_id(poet_id), seed)
 
         # выбираем шаблон на основе случайного стихотворения из корпуса
-        profiler.enter('header')
         poem_template = self.template_loader.get_random_template(request.poet)
         template = poem_template.get_template()
         diff8 = len(template) - 8
@@ -167,7 +160,6 @@ class Generator2:
         # оцениваем word2vec-вектор темы
         seed_mean_vector = self.corpusw2v.mean_vector(request.seed)
         used_replacement_lemms = set()
-        profiler.exit()
 
         # заменяем слова в шаблоне на более релевантные теме
         for li, line in enumerate(template):
@@ -178,10 +170,7 @@ class Generator2:
                 if len(word) > 2 and not (word in self.stop_words) and is_cyrillic_word(word):
                     word_tag = self._word_tag(self.morph.tag(word)[0])
                     if last_word:
-                        profiler.enter('rhymes')
                         replacements = self.ortho.rhymes(word)
-                        profiler.exit()
-                        profiler.enter('replacements_params.rhymes')
                         replacements_params: List[Tuple[Word, float, float, WordResult]] = [
                             (
                                 wr.word,
@@ -192,9 +181,7 @@ class Generator2:
                             for wr in replacements
                             if self._filter_candidates_by_params(wr.word, word_tag, word) and wr.word.lemma not in used_replacement_lemms
                         ]
-                        profiler.exit()
                     else:
-                        profiler.enter('replacements_params')
                         replacements_params: List[Tuple[Word, float, float, WordResult]] = [
                             (
                                 wrd,
@@ -205,7 +192,6 @@ class Generator2:
                             for wrd in self._find_by_form(word, word_tag)
                             if self._filter_candidates_by_params(wrd, word_tag, word) and wrd.lemma not in used_replacement_lemms
                         ]
-                        profiler.exit()
 
                     if replacements_params:
                         new_wrd = min(replacements_params, key=self._sort_candidates_by_params)[0]
@@ -219,7 +205,6 @@ class Generator2:
                     new_word = token
                 print('%s -> %s' % (word, new_word))
                 template[li][ti] = new_word
-        profiler.exit()
 
         return PoemResult(request, poem_template.poem, self._lines_from_template(template),
                           round(time.time() - start_time, 3),
@@ -237,7 +222,6 @@ class Generator2:
 
     # less is BETTER
     def _sort_candidates_by_params(self, tuple: Tuple[Word, float, float, WordResult]):
-        profiler.enter('sort_candidates_by_params')
         word, w2v_distance, sound_distance, word_result = tuple
         # normalize
         w2v_distance = w2v_distance
@@ -245,16 +229,12 @@ class Generator2:
         freq = word.frequency
         freq = log(self.freq.max_freq()) / log(freq) if freq >= 2 else log(self.freq.max_freq()) / 0.5
         if word_result:
-            profiler.exit()
             return w2v_distance  + word_result.fuzzy * 0.1 + freq * 0.05
         else:
-            profiler.exit()
             return w2v_distance  + sound_distance * 0.1 + freq * 0.05
 
     def _filter_candidates_by_params(self, word: Word, orig_word_tag: object, orig_word: str):
-        profiler.enter('filter_candidates_by_params')
         if word.text == orig_word or word.lemma == orig_word:
-            profiler.exit()
             return False
         tag = word.tag
         if (orig_word_tag.POS and tag.POS != orig_word_tag.POS) or \
@@ -263,9 +243,7 @@ class Generator2:
                 (orig_word_tag.number and tag.number != orig_word_tag.number) or \
                 (orig_word_tag.gender and tag.gender != orig_word_tag.gender) or \
                 (orig_word_tag.person and tag.person != orig_word_tag.person):
-            profiler.exit()
             return False
-        profiler.exit()
         return True
 
     def _last_cyrillic_word_idx(self, line: List[str]):
