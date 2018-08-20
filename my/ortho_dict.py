@@ -228,13 +228,13 @@ class OrthoDict:
             results: List[Word] = self._rhymes_by_phonetic_after_stress[fuzzy].get(postfix) or []
             for result in results:
                 if added_words.get(result) is None and result.phonetic() != word.phonetic():
-                    all_results.append(WordResult(result, fuzzy, self.frequency.freq(result)))
+                    all_results.append(WordResult(result, fuzzy, result.frequency))
                     added_words[result] = fuzzy
                     if limit and len(all_results) >= limit:
                         break
             if limit and len(all_results) >= limit:
                 break
-        return [w for w in all_results if w.word.phonetic() != word.phonetic()]
+        return all_results
 
     def find_word(self, text: str) -> Optional[Word]:
         variants = self._text_to_words.get(text.lower())
