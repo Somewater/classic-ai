@@ -203,8 +203,12 @@ class Generator2:
                         new_word = token
                 else:
                     new_word = token
-                print('%s -> %s' % (word, new_word))
                 template[li][ti] = new_word
+
+            seconds = time.time() - start_time
+            if seconds > 5.0:
+                self.log.warning('premature exit after %f seconds' % (seconds))
+                break
 
         return PoemResult(request, poem_template.poem, self._lines_from_template(template),
                           round(time.time() - start_time, 3),

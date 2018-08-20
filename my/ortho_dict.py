@@ -247,8 +247,6 @@ class OrthoDict:
                 else:
                     return variants[1]
             else:
-                logging.warning("Many (%d) variants for word %s: %s" %
-                                (len(variants), text, ", ".join([repr(w) for w in variants])))
                 return None
 
     def find_stressed_index(self, text: str) -> Optional[int]:
