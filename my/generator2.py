@@ -26,6 +26,7 @@ from my.ortho_dict import WordResult
 import time
 
 from my.word import WordTag
+from multiprocessing import Process, SimpleQueue, cpu_count, Pool
 
 
 class Phonetic0_2(object):
@@ -57,31 +58,32 @@ class Phonetic0_2(object):
         distance = sum((ch1 != ch2) for ch1, ch2 in zip(suffix1, suffix2))
         return distance
 
-class PoemTemplate(namedtuple('PoemTemplate', ['poem']), ContentBase):
+class PoemTemplate(namedtuple('PoemTemplate', ['poem', 'template', 'lines_count']), ContentBase):
     poem: Poem
+    template: List[List[str]]
+    lines_count: int
 
     def get_template(self) -> Iterator[List[str]]:
-        return [get_cyrillic_words_and_punctuations(line.lower()) for line in get_cyrillic_lines(self.poem.content)]
+        return self.template
 
 class PoemTemplateLoader2(object):
-    def __init__(self, poems: Iterator[Poem], min_lines=3):
+    def __init__(self, poems: Iterator[Poem], random, min_lines=3):
         self.poet_templates = collections.defaultdict(list)
         self.min_lines = min_lines
+        self.random = random
 
         for poem in poems:
-            template = PoemTemplate(poem)
-            enough_lnes = False
-            for i, _ in enumerate(template.get_template()):
-                if i + 1 >= min_lines:
-                    enough_lnes = True
-            if enough_lnes:
+            template_lines = [get_cyrillic_words_and_punctuations(line.lower()) for line in get_cyrillic_lines(poem.content)]
+            template = PoemTemplate(poem, template_lines, len(template_lines))
+
+            if template.lines_count >= min_lines:
                 self.poet_templates[poem.poet].append(template)
 
     def get_random_template(self, poet: Poet) -> Tuple[PoemTemplate]:
         """Возвращает случайный шаблон выбранного поэта"""
         if not self.poet_templates[poet]:
             raise KeyError('Unknown poet "%s"' % poet)
-        return random.choice(self.poet_templates[poet])
+        return self.random.choice(self.poet_templates[poet])
 
 # seed -> List[word]
 # word -> List[word2] (collocations)
@@ -94,19 +96,23 @@ class Generator2:
     BeforeSpaceChars = set(['«', "'", '"', '№'])
     NoSpaceChars = set(['’', "'"])
 
-    def __init__(self, log: Logger, reader: DataReader, ortho: OrthoDict, freq: Frequency):
+    def __init__(self, log: Logger, reader: DataReader, ortho: OrthoDict, freq: Frequency, rand_seed: int = None):
         self.log = log
         self.reader = reader
         self.ortho = ortho
         self.freq = freq
         self.morph = None
         self.started = False
+        self.tasks_queue = SimpleQueue()
+        self.results_queue = SimpleQueue()
+        self.cpu_count = max(cpu_count(), 4)
+        self.random = random.Random(rand_seed)
 
     def start(self):
         self.freq.load()
         self.log.info('Frequency ready')
         # Шаблоны стихов: строим их на основе собраний сочинений от организаторов
-        self.template_loader = PoemTemplateLoader2(self.reader.read_classic_poems())
+        self.template_loader = PoemTemplateLoader2(self.reader.read_classic_poems(), self.random)
         self.log.info('Templates ready')
         # Словарь ударений: берется из локального файла, который идет вместе с решением
         self.phonetic = Phonetic0_2(self.ortho)
@@ -127,6 +133,35 @@ class Generator2:
         self.morph = pymorphy2.MorphAnalyzer()
         self.started = True
 
+    def start_workers(self):
+        self.workers = []
+        for i in range(self.cpu_count):
+            p = Process(target=self.run_worker, args=(i, self.tasks_queue, self.results_queue))
+            self.workers.append(p)
+            p.start()
+
+    def stop_workers(self):
+        for w in self.workers:
+            w.terminate()
+        self.workers.clear()
+
+    def run_worker(self, worker_id: int, tasks_queue: SimpleQueue, results_queue: SimpleQueue):
+        while True:
+            template_line, line_idx, seed_mean_vector = tasks_queue.get()
+            generated_line = self.generate_line(template_line, line_idx, seed_mean_vector)
+            results_queue.put(((generated_line, line_idx), worker_id))
+
+    def run_once(self,
+                 template_lines: Iterator[Tuple[List[str], int]],
+                 seed_mean_vector: np.array,
+                 start_time: float,
+                 results_queue: SimpleQueue):
+        result = []
+        for template_line, line_idx in template_lines:
+            generated_line = self.generate_line(template_line, line_idx, seed_mean_vector)
+            result.append((generated_line, line_idx))
+        results_queue.put(result)
+
     def _generate_word_by_form(self):
         self.word_by_form = defaultdict(set)
         self.word_by_form_by_pos = defaultdict(set)
@@ -142,78 +177,127 @@ class Generator2:
                     if case:
                         self.word_by_form_by_pos_by_case[(form, pos, case)].add(word)
 
-    def generate(self, poet_id: str, seed: str) -> PoemResult:
+    def process_in_parallel_with_workers(self, template, seed_mean_vector, start_time):
+        if not self.workers:
+            self.log.warning('Workers started amoung generation')
+            self.start_workers()
+
+        task_counter = 0
+        for li, line in enumerate(template):
+            self.tasks_queue.put((line, li, seed_mean_vector))
+            task_counter += 1
+
+        while task_counter > 0:
+            (generated_line, line_idx), worker_id = self.results_queue.get()
+            template[line_idx] = generated_line
+            task_counter -= 1
+
+            seconds = time.time() - start_time
+            if seconds > 4.0:
+                self.log.warning('premature exit after %f seconds, %d tasks result remaining' % (seconds, task_counter))
+                break
+        return template
+
+    def process_in_parallel(self, template, seed_mean_vector, start_time):
+        workers = []
+        line_per_worker = ceil(len(template) / self.cpu_count)
+        lines_count = len(template)
+        i = 0
+        for worker_id in range(self.cpu_count):
+            lines = []
+            for _ in range(line_per_worker):
+                if i >= lines_count:
+                    break
+                lines.append((template[i], i))
+                i += 1
+            if lines:
+                p = Process(target=self.run_once, args=(lines, seed_mean_vector, start_time, self.results_queue))
+                workers.append(p)
+                p.start()
+
+        for _ in workers:
+            generated_lines = self.results_queue.get()
+            for generated_line, line_idx in generated_lines:
+                template[line_idx] = generated_line
+        return template
+
+    def process_sequence(self, template, seed_mean_vector, start_time):
+        return [self.generate_line(template_line, line_idx, seed_mean_vector) for line_idx, template_line in enumerate(template)]
+
+    def generate(self, poet_id: str, seed: str, process_type: str = 's') -> PoemResult:
         if not self.started:
+            self.log.warning('Method start() invoked amoung generation')
             self.start()
         start_time = time.time()
         poet_id = Poet.recover(poet_id)
         request = PoemRequest(Poet.by_poet_id(poet_id), seed)
 
         # выбираем шаблон на основе случайного стихотворения из корпуса
-        poem_template = self.template_loader.get_random_template(request.poet)
+        poem_template: PoemTemplate = self.template_loader.get_random_template(request.poet)
         template = poem_template.get_template()
-        diff8 = len(template) - 8
+        diff8 = poem_template.lines_count - 8
         offset = 0
         if diff8 >= 2:
-            offset = random.randint(0, int(diff8 / 2)) * 2
+            offset = self.random.randint(0, int(diff8 / 2)) * 2
             template = template[offset: (offset + 8)]
 
         # оцениваем word2vec-вектор темы
         seed_mean_vector = self.corpusw2v.mean_vector(request.seed)
-        used_replacement_lemms = set()
-
-        # заменяем слова в шаблоне на более релевантные теме
-        for li, line in enumerate(template):
-            last_word_idx = self._last_cyrillic_word_idx(line)
-            for ti, token in enumerate(line):
-                word = token.lower()
-                last_word = ti == last_word_idx
-                if len(word) > 2 and not (word in self.stop_words) and is_cyrillic_word(word):
-                    word_tag = self._word_tag(self.morph.tag(word)[0])
-                    if last_word:
-                        replacements = self.ortho.rhymes(word)
-                        replacements_params: List[Tuple[Word, float, float, WordResult]] = [
-                            (
-                                wr.word,
-                                self.corpusw2v.distance(seed_mean_vector, wr.word.vector),
-                                self.phonetic.sound_distance(wr.word.text, word),
-                                wr
-                            )
-                            for wr in replacements
-                            if self._filter_candidates_by_params(wr.word, word_tag, word) and wr.word.lemma not in used_replacement_lemms
-                        ]
-                    else:
-                        replacements_params: List[Tuple[Word, float, float, WordResult]] = [
-                            (
-                                wrd,
-                                self.corpusw2v.distance(seed_mean_vector, wrd.vector),
-                                self.phonetic.sound_distance(wrd.text, word),
-                                None
-                            )
-                            for wrd in self._find_by_form(word, word_tag)
-                            if self._filter_candidates_by_params(wrd, word_tag, word) and wrd.lemma not in used_replacement_lemms
-                        ]
-
-                    if replacements_params:
-                        new_wrd = min(replacements_params, key=self._sort_candidates_by_params)[0]
-                        used_replacement_lemms.add(new_wrd.lemma)
-                        new_word = new_wrd.text
-                        #replacements_params = sorted(replacements_params, key=self._sort_candidates_by_params) #  TODO: remove mE!!!
-                        #import ipdb; ipdb.set_trace()
-                    else:
-                        new_word = token
-                else:
-                    new_word = token
-                template[li][ti] = new_word
-
-            seconds = time.time() - start_time
-            if seconds > 5.0:
-                self.log.warning('premature exit after %f seconds' % (seconds))
-                break
+        if process_type == 'w':
+            template = self.process_in_parallel_with_workers(template, seed_mean_vector, start_time)
+        elif process_type == 'p':
+            template = self.process_in_parallel(template, seed_mean_vector, start_time)
+        elif process_type == 's':
+            template = self.process_sequence(template, seed_mean_vector, start_time)
 
         return PoemResult(request, poem_template.poem, self._lines_from_template(template),
                           round(time.time() - start_time, 3),
                           offset)
+
+    def generate_line(self, template_line: List[str], line_idx: int, seed_mean_vector: np.array) -> List[str]:
+        used_replacement_lemms: set[str] = set()
+        last_word_idx = self._last_cyrillic_word_idx(template_line)
+        for ti, token in enumerate(template_line):
+            word = token.lower()
+            last_word = ti == last_word_idx
+            if len(word) > 2 and not (word in self.stop_words) and is_cyrillic_word(word):
+                word_tag = self._word_tag(self.morph.tag(word)[0])
+                if last_word:
+                    replacements = self.ortho.rhymes(word)
+                    replacements_params: List[Tuple[Word, float, float, WordResult]] = [
+                        (
+                            wr.word,
+                            self.corpusw2v.distance(seed_mean_vector, wr.word.vector),
+                            self.phonetic.sound_distance(wr.word.text, word),
+                            wr
+                        )
+                        for wr in replacements
+                        if self._filter_candidates_by_params(wr.word, word_tag, word) and wr.word.lemma not in used_replacement_lemms
+                    ]
+                else:
+                    replacements_params: List[Tuple[Word, float, float, WordResult]] = [
+                        (
+                            wrd,
+                            self.corpusw2v.distance(seed_mean_vector, wrd.vector),
+                            self.phonetic.sound_distance(wrd.text, word),
+                            None
+                        )
+                        for wrd in self._find_by_form(word, word_tag)
+                        if self._filter_candidates_by_params(wrd, word_tag, word) and wrd.lemma not in used_replacement_lemms
+                    ]
+
+                if replacements_params:
+                    new_wrd = min(replacements_params, key=self._sort_candidates_by_params)[0]
+                    used_replacement_lemms.add(new_wrd.lemma)
+                    new_word = new_wrd.text
+                    #replacements_params = sorted(replacements_params, key=self._sort_candidates_by_params) #  TODO: remove mE!!!
+                    #import ipdb; ipdb.set_trace()
+                else:
+                    new_word = token
+            else:
+                new_word = token
+            template_line[ti] = new_word
+        return template_line
 
     def _find_by_form(self, word: str, word_tag: WordTag):
         form = self.phonetic.get_form(word)
