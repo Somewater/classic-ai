@@ -1,5 +1,4 @@
 from flask import Flask, request, jsonify, abort
-import locale
 import my
 import logging
 from my import *
@@ -34,10 +33,7 @@ class MyCallback(CallbackAny2Vec):
     pass
 
 if __name__ == '__main__':
-    reader = DataReader()
-    freq = Frequency(reader)
-    ortho = OrthoDict(freq)
-    generator = my.Generator2(logging.getLogger('generator'), reader, ortho, freq)
+    generator = my.Generator2()
     generator.start()
     print("Started in %.3f seconds" % (time.time() - start_time))
     print("MEM: %s" % repr(psutil.virtual_memory()))

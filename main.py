@@ -13,11 +13,10 @@ class MyCallback(CallbackAny2Vec):
 
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 
-reader = DataReader()
-freq = Frequency(reader)
-ortho = OrthoDict(freq)
-generator1 = Generator1(logging.getLogger('generator1'), reader)
-generator2 = Generator2(logging.getLogger('generator2'), reader, ortho, freq)
+generator2 = Generator2()
+reader = generator2.reader
+ortho = generator2.ortho
+freq = generator2.freq
 preparator = WikiPagePreparator()
 
 corpus = WikiCorpus(reader, type='lemm')

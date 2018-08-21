@@ -24,9 +24,11 @@ from math import *
 
 from my.ortho_dict import WordResult
 import time
+import logging
 
 from my.word import WordTag
 from multiprocessing import Process, SimpleQueue, cpu_count, Pool
+import gc
 
 
 class Phonetic0_2(object):
@@ -96,16 +98,16 @@ class Generator2:
     BeforeSpaceChars = set(['«', "'", '"', '№'])
     NoSpaceChars = set(['’', "'"])
 
-    def __init__(self, log: Logger, reader: DataReader, ortho: OrthoDict, freq: Frequency, rand_seed: int = None):
-        self.log = log
-        self.reader = reader
-        self.ortho = ortho
-        self.freq = freq
+    def __init__(self, rand_seed: int = None):
+        self.log = logging.getLogger('generator')
+        self.reader = DataReader()
+        self.freq = Frequency(self.reader)
+        self.ortho = OrthoDict(self.freq)
         self.morph = None
         self.started = False
         self.tasks_queue = SimpleQueue()
         self.results_queue = SimpleQueue()
-        self.cpu_count = max(cpu_count(), 4)
+        self.cpu_count = 2 # max(cpu_count(), 4)
         self.random = random.Random(rand_seed)
 
     def start(self):
@@ -146,6 +148,7 @@ class Generator2:
         self.workers.clear()
 
     def run_worker(self, worker_id: int, tasks_queue: SimpleQueue, results_queue: SimpleQueue):
+        gc.disable()
         while True:
             template_line, line_idx, seed_mean_vector = tasks_queue.get()
             generated_line = self.generate_line(template_line, line_idx, seed_mean_vector)
