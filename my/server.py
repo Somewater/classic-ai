@@ -3,7 +3,10 @@ import locale
 import my
 import logging
 from my import *
+import psutil
+import time
 
+start_time = time.time()
 app = Flask(__name__)
 generator: my.Generator1 = None
 log = logging.getLogger('app')
@@ -36,4 +39,8 @@ if __name__ == '__main__':
     ortho = OrthoDict(freq)
     generator = my.Generator2(logging.getLogger('generator'), reader, ortho, freq)
     generator.start()
+    print("Started in %.3f seconds" % (time.time() - start_time))
+    print("MEM: %s" % repr(psutil.virtual_memory()))
+    print("SWAP: %s" % repr(psutil.swap_memory()))
+    print("CPU(%d): %s" % (psutil.cpu_count(), repr(psutil.cpu_freq())))
     app.run(host='0.0.0.0', port=8000)
