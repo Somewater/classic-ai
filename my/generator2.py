@@ -261,7 +261,7 @@ class Generator2:
             word = token.lower()
             last_word = ti == last_word_idx
             if len(word) > 2 and not (word in self.stop_words) and is_cyrillic_word(word):
-                word_tag = None # self._word_tag(self.morph.tag(word)[0])
+                word_tag = self._word_tag(self.morph.tag(word)[0])
                 if last_word:
                     replacements = self.ortho.rhymes(word)
                     replacements_params: List[Tuple[Word, float, float, WordResult]] = [
@@ -301,7 +301,7 @@ class Generator2:
 
     def _find_by_form(self, word: str, word_tag: WordTag):
         form = self.phonetic.get_form(word)
-        if word_tag and word_tag.POS:
+        if word_tag.POS:
             if word_tag.case:
                 return self.word_by_form_by_pos_by_case[(form, word_tag.POS, word_tag.case)]
             else:
@@ -326,14 +326,13 @@ class Generator2:
         if word.text == orig_word or word.lemma == orig_word:
             return False
         tag = word.tag
-        if orig_word_tag:
-            if (orig_word_tag.POS and tag.POS != orig_word_tag.POS) or \
-                    (orig_word_tag.case and tag.case != orig_word_tag.case) or \
-                    (orig_word_tag.tense and tag.tense != orig_word_tag.tense) or \
-                    (orig_word_tag.number and tag.number != orig_word_tag.number) or \
-                    (orig_word_tag.gender and tag.gender != orig_word_tag.gender) or \
-                    (orig_word_tag.person and tag.person != orig_word_tag.person):
-                return False
+        if (orig_word_tag.POS and tag.POS != orig_word_tag.POS) or \
+                (orig_word_tag.case and tag.case != orig_word_tag.case) or \
+                (orig_word_tag.tense and tag.tense != orig_word_tag.tense) or \
+                (orig_word_tag.number and tag.number != orig_word_tag.number) or \
+                (orig_word_tag.gender and tag.gender != orig_word_tag.gender) or \
+                (orig_word_tag.person and tag.person != orig_word_tag.person):
+            return False
         return True
 
     def _last_cyrillic_word_idx(self, line: List[str]):
