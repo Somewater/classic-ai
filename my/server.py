@@ -7,7 +7,7 @@ import time
 
 start_time = time.time()
 app = Flask(__name__)
-generator: my.Generator1 = None
+generator: my.Generator2 = None
 log = logging.getLogger('app')
 
 @app.route('/ready')

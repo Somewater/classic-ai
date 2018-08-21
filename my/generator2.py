@@ -1,5 +1,5 @@
 from logging import Logger
-from typing import Dict, List, Iterator, Callable, Tuple, Union
+from typing import Dict, List, Iterator, Callable, Tuple, Union, Set
 
 from my import *
 from my.utils import levenshtein_distance
@@ -265,7 +265,7 @@ class Generator2:
                       template_line: List[str],
                       line_idx: int,
                       seed_mean_vector: np.array,
-                      used_replacement_lemms: set[str] = None) -> List[str]:
+                      used_replacement_lemms: Set[str] = None) -> List[str]:
         if used_replacement_lemms is None:
             used_replacement_lemms = set()
         last_word_idx = self._last_cyrillic_word_idx(template_line)
