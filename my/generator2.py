@@ -225,7 +225,9 @@ class Generator2:
         return template
 
     def process_sequence(self, template, seed_mean_vector, start_time):
-        return [self.generate_line(template_line, line_idx, seed_mean_vector) for line_idx, template_line in enumerate(template)]
+        used_replacement_lemms = set()
+        return [self.generate_line(template_line, line_idx, seed_mean_vector, used_replacement_lemms)
+                for line_idx, template_line in enumerate(template)]
 
     def generate(self, poet_id: str, seed: str, process_type: str = 's') -> PoemResult:
         if not self.started:
@@ -257,8 +259,13 @@ class Generator2:
                           round(time.time() - start_time, 3),
                           offset)
 
-    def generate_line(self, template_line: List[str], line_idx: int, seed_mean_vector: np.array) -> List[str]:
-        used_replacement_lemms: set[str] = set()
+    def generate_line(self,
+                      template_line: List[str],
+                      line_idx: int,
+                      seed_mean_vector: np.array,
+                      used_replacement_lemms: set[str] = None) -> List[str]:
+        if used_replacement_lemms is None:
+            used_replacement_lemms = set()
         last_word_idx = self._last_cyrillic_word_idx(template_line)
         for ti, token in enumerate(template_line):
             word = token.lower()
