@@ -35,8 +35,8 @@ class MyCallback(CallbackAny2Vec):
 if __name__ == '__main__':
     generator = my.Generator2()
     generator.start()
-    print("Started in %.3f seconds" % (time.time() - start_time))
-    print("MEM: %s" % repr(psutil.virtual_memory()))
-    print("SWAP: %s" % repr(psutil.swap_memory()))
-    print("CPU(%d): %s" % (psutil.cpu_count(), repr(psutil.cpu_freq())))
+    generator.log("Started in %.3f seconds" % (time.time() - start_time))
+    generator.log("MEM: %s" % repr(psutil.virtual_memory()))
+    generator.log("SWAP: %s" % repr(psutil.swap_memory()))
+    generator.log("CPU(%d): %s" % (psutil.cpu_count(), repr(psutil.cpu_freq())))
     app.run(host='0.0.0.0', port=8000)
