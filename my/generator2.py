@@ -245,6 +245,8 @@ class Generator2:
         if diff8 >= 2:
             offset = self.random.randint(0, int(diff8 / 2)) * 2
             template = template[offset: (offset + 8)]
+        else:
+            template = template[:8]
 
         # оцениваем word2vec-вектор темы
         seed_mean_vector = self.corpusw2v.mean_vector(request.seed)
