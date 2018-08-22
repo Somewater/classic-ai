@@ -13,6 +13,9 @@ app = Flask(__name__)
 generator: my.Generator2 = None
 log = logging.getLogger('app')
 
+app.logger.disabled = True
+logging.getLogger('werkzeug').disabled = True
+
 @app.route('/ready')
 def ready():
     return 'OK'
@@ -20,14 +23,15 @@ def ready():
 
 @app.route('/generate/<poet_id>', methods=['POST'])
 def generate(poet_id):
-    request_data = request.get_json()
-    seed = request_data['seed']
-    log.info("Request poet_id=%s, seed=%s" % (poet_id, seed))
     try:
+        request_data = request.get_json()
+        seed = request_data['seed']
+        log.info("Request poet_id=%s, seed=%s" % (poet_id, seed))
         result = generator.generate(poet_id, seed)
         return jsonify({'poem': result.content()})
     except:
         traceback.print_exc(file=sys.stderr)
+        traceback.print_exc()
         abort(500)
 
 # HOTFIX
@@ -40,8 +44,5 @@ if __name__ == '__main__':
     generator = my.Generator2()
     generator.start()
     print("Started in %.3f seconds" % (time.time() - start_time), file=sys.stderr)
-    print("MEM: %s" % repr(psutil.virtual_memory()), file=sys.stderr)
-    print("SWAP: %s" % repr(psutil.swap_memory()), file=sys.stderr)
-    print("CPU(%d): %s" % (psutil.cpu_count(), repr(psutil.cpu_freq())), file=sys.stderr)
     gc.set_threshold(100, 1, 2**31-1)
     app.run(host='0.0.0.0', port=8000)
