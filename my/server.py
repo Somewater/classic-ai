@@ -5,6 +5,8 @@ from my import *
 import psutil
 import time
 import sys
+import gc
+import traceback
 
 start_time = time.time()
 app = Flask(__name__)
@@ -24,8 +26,9 @@ def generate(poet_id):
     try:
         result = generator.generate(poet_id, seed)
         return jsonify({'poem': result.content()})
-    except KeyError:
-        abort(404)
+    except:
+        traceback.print_exc(file=sys.stderr)
+        abort(500)
 
 # HOTFIX
 profiler.disabled = True
@@ -40,4 +43,5 @@ if __name__ == '__main__':
     print("MEM: %s" % repr(psutil.virtual_memory()), file=sys.stderr)
     print("SWAP: %s" % repr(psutil.swap_memory()), file=sys.stderr)
     print("CPU(%d): %s" % (psutil.cpu_count(), repr(psutil.cpu_freq())), file=sys.stderr)
+    gc.set_threshold(100, 1, 2**31-1)
     app.run(host='0.0.0.0', port=8000)

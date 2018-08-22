@@ -75,7 +75,7 @@ class PoemTemplateLoader2(object):
         self.random = random
 
         for poem in poems:
-            template_lines = [get_cyrillic_words_and_punctuations(line.lower()) for line in get_cyrillic_lines(poem.content)]
+            template_lines = [get_cyrillic_words_and_punctuations(line.lower()) for line in get_cyrillic_lines(poem.content) if len(line) <= 100]
             template = PoemTemplate(poem, template_lines, len(template_lines))
 
             if template.lines_count >= min_lines:
