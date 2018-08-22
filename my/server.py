@@ -13,8 +13,8 @@ app = Flask(__name__)
 generator: my.Generator2 = None
 log = logging.getLogger('app')
 
-app.logger.disabled = True
-logging.getLogger('werkzeug').disabled = True
+# app.logger.disabled = True
+# logging.getLogger('werkzeug').disabled = True
 
 @app.route('/ready')
 def ready():
@@ -26,7 +26,7 @@ def generate(poet_id):
     try:
         request_data = request.get_json()
         seed = request_data['seed']
-        log.info("Request poet_id=%s, seed=%s" % (poet_id, seed))
+        print("Request poet_id=%s, seed=%s" % (poet_id, seed))
         result = generator.generate(poet_id, seed)
         return jsonify({'poem': result.content()})
     except:
@@ -44,5 +44,6 @@ if __name__ == '__main__':
     generator = my.Generator2()
     generator.start()
     print("Started in %.3f seconds" % (time.time() - start_time), file=sys.stderr)
+    print("Started in %.3f seconds" % (time.time() - start_time))
     gc.set_threshold(100, 1, 2**31-1)
     app.run(host='0.0.0.0', port=8000)
