@@ -11,7 +11,7 @@ class Phonetic(object):
                           'ы': 'и'}
     CONS = {'б', 'в', 'г', 'д', 'ж', 'з', 'й', 'к', 'л', 'м', 'н',
             'п', 'р', 'с', 'т', 'ф', 'х', 'ц', 'ш', 'щ', 'ч'}
-    VOISED_TO_VOISLESS = {'б': 'п', 'в': 'ф', 'г': 'к', 'д': 'т', 'ж': 'ш', 'з': 'с'}
+    VOISED_TO_VOISLESS = {'б': 'п', 'в': 'ф', 'г': 'к', 'д': 'т', 'ж': 'ш', 'з': 'с', 'р': 'л'}
     VOISLESS_TO_VOISED = dict(map(lambda x: (x[1], x[0]), VOISED_TO_VOISLESS.items()))
     VOISED_CONS = set(VOISED_TO_VOISLESS.keys())
     VOISELESS_CONS = set(VOISED_TO_VOISLESS.values())
