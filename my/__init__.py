@@ -7,6 +7,7 @@ from .utils import get_cyrillic_lines, get_cyrillic_words, is_cyrillic, AllowedP
 from .data_helper import DataHelper
 from .data_preparation import WikiPagePreparator
 from .frequency import Frequency
+from .classic_poems import ClassicPoems
 from .corpus_w2v import CorpusW2v
 from .nn_base import NNBase
 from .nn1 import NN1

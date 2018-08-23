@@ -16,10 +16,12 @@ HYPHEN4 = chr(8212)
 STRESS = chr(769)
 SPACE1 = '\u2003'
 SPACE2 = '\u2004'
-AllowedPunctuation = set([' ', '.', ',', ';', '!', '?', ':', '…', '«', '»', '"', "'", '(', ')', '[', ']', '{', '}',
-                          chr(47),
-                          '<', '>', '„', '“', '”', NBSP, '_', chr(769), '-', HYPHEN1, HYPHEN2, HYPHEN3, HYPHEN4,
-                          SPACE1, SPACE2, '*', '‹', '›', '|'])
+CHR_47 = chr(47)
+CHR_769 = chr(769)
+AllowedPunctuation = set([' ', '.', ',', ';', '!', '?', ':', '…', '-'])
+
+
+
 WebCharPattern = re.compile('&(#\d{1,4}|\w{1,4});')
 ManySpaces = re.compile('\s+')
 rus_stemmer = RussianStemmer()
@@ -36,12 +38,15 @@ def get_cyrillic_lines(content: str) -> Iterator[str]:
     for line in content.splitlines():
         line = WebCharPattern.sub('', ManySpaces.sub(' ', line))
         if line:
-            cyrillic = True
+            cyrillic = False
+            wrong_chars = False
             for c in line:
-                if not (is_cyrillic(c) or c in AllowedPunctuation):
-                    cyrillic = False
+                if is_cyrillic(c):
+                    cyrillic = True
+                elif not c in AllowedPunctuation:
+                    wrong_chars = True
                     break
-            if cyrillic:
+            if cyrillic and not wrong_chars:
                 yield line
 
 def is_cyrillic_word(word: str) -> bool:
@@ -49,6 +54,18 @@ def is_cyrillic_word(word: str) -> bool:
         if not is_cyrillic(c) and c != '-':
             return False
     return True
+
+def is_cyrillic_line(line: str) -> bool:
+    if line:
+        cyrillic = False
+        for c in line:
+            if is_cyrillic(c):
+                cyrillic = True
+            elif not c in AllowedPunctuation:
+                return False
+        return cyrillic
+    else:
+        return False
 
 def unify_chars(line: str) -> str:
     # return line.replace('_', '').replace(STRESS, '').replace(NBSP, ' ') \
@@ -63,10 +80,11 @@ def unify_chars(line: str) -> str:
     #     .replace('|', ' ')
     chars = []
     for c in line:
-        skip_char = c == '_' or c == STRESS or c == '*' or c == '[' or c == ']' or c == '(' or c == '{' or c == '}'\
-                    or c == '<' or c == '>' or c == '„' or c == '“' or c == '”' or c == '‹' or c == '›'
+        skip_char = c == '_' or c == STRESS or c == '*' or c == '[' or c == ']' or c == '(' or c == ')' or c == '{' or c == '}'\
+                    or c == '<' or c == '>' or c == '„' or c == '“' or c == '”' or c == '‹' or c == '›' \
+                    or c == '«' or c == '»' or c == '"' or c == "'" or c == CHR_47 or c == CHR_769
         if not skip_char:
-            replace_to_space = c == NBSP or c == SPACE1 or c == SPACE2 or c == '|'
+            replace_to_space = c == NBSP or c == SPACE1 or c == SPACE2 or c == '|' or c == '_'
             if replace_to_space:
                 chars.append(' ')
             else:
@@ -76,8 +94,6 @@ def unify_chars(line: str) -> str:
                 else:
                     chars.append(c)
     return ''.join(chars)
-
-
 
 def get_cyrillic_words(line: str) -> List[str]:
     words = []

@@ -60,33 +60,6 @@ class Phonetic0_2(object):
         distance = sum((ch1 != ch2) for ch1, ch2 in zip(suffix1, suffix2))
         return distance
 
-class PoemTemplate(namedtuple('PoemTemplate', ['poem', 'template', 'lines_count']), ContentBase):
-    poem: Poem
-    template: List[List[str]]
-    lines_count: int
-
-    def get_template(self) -> Iterator[List[str]]:
-        return self.template
-
-class PoemTemplateLoader2(object):
-    def __init__(self, poems: Iterator[Poem], random, min_lines=3):
-        self.poet_templates = collections.defaultdict(list)
-        self.min_lines = min_lines
-        self.random = random
-
-        for poem in poems:
-            template_lines = [get_cyrillic_words_and_punctuations(line.lower()) for line in get_cyrillic_lines(poem.content) if len(line) <= 100]
-            template = PoemTemplate(poem, template_lines, len(template_lines))
-
-            if template.lines_count >= min_lines:
-                self.poet_templates[poem.poet].append(template)
-
-    def get_random_template(self, poet: Poet) -> Tuple[PoemTemplate]:
-        """Возвращает случайный шаблон выбранного поэта"""
-        if not self.poet_templates[poet]:
-            raise KeyError('Unknown poet "%s"' % poet)
-        return self.random.choice(self.poet_templates[poet])
-
 # seed -> List[word]
 # word -> List[word2] (collocations)
 # word2 in poet lyric -> poet lines
@@ -99,24 +72,23 @@ class Generator2:
     NoSpaceChars = set(['’', "'"])
 
     def __init__(self, rand_seed: int = None):
+        self.random = random.Random(rand_seed)
         self.log = logging.getLogger('generator')
         self.reader = DataReader()
         self.freq = Frequency(self.reader)
         self.ortho = OrthoDict(self.freq)
+        self.poems = ClassicPoems(self.reader, self.random)
         self.morph = None
         self.started = False
         self.tasks_queue = SimpleQueue()
         self.results_queue = SimpleQueue()
         self.cpu_count = 2 # max(cpu_count(), 4)
-        self.random = random.Random(rand_seed)
 
     def start(self):
+        self.poems.load()
+        self.log.info('Classic poems ready')
         self.freq.load()
         self.log.info('Frequency ready')
-        # Шаблоны стихов: строим их на основе собраний сочинений от организаторов
-        self.template_loader = PoemTemplateLoader2(self.reader.read_classic_poems(), self.random)
-        self.log.info('Templates ready')
-        # Словарь ударений: берется из локального файла, который идет вместе с решением
         self.phonetic = Phonetic0_2(self.ortho)
         self.log.info('Phonetic ready')
         if not self.ortho.loaded():
@@ -238,7 +210,7 @@ class Generator2:
         request = PoemRequest(Poet.by_poet_id(poet_id), seed)
 
         # выбираем шаблон на основе случайного стихотворения из корпуса
-        poem_template: PoemTemplate = self.template_loader.get_random_template(request.poet)
+        poem_template: PoemTemplate = self.poems.get_random_template(request.poet)
         template = poem_template.get_template()
         diff8 = poem_template.lines_count - 8
         offset = 0
@@ -382,7 +354,7 @@ class Generator2:
                         no_space_char = word in Generator2.NoSpaceChars
                         big_letter_after = word == '.'
                         generated_line += word
-            result.append(generated_line.strip())
+            result.append(generated_line.strip()[:120])
         return result
 
     # WordTag = namedtuple('WordTag', ['POS', 'case', 'tense', 'number', 'person', 'gender'])

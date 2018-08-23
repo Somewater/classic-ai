@@ -258,3 +258,20 @@ class SCTM(namedtuple('SCTM', ['id', 'title', 'categories', 'words']), Topic):
                 category = pc[0]
                 posts[category].append(p)
         return posts
+
+class PoemTemplate(namedtuple('PoemTemplate', ['poem', 'lines', 'lines_count']), ContentBase):
+    poem: Poem
+    lines: List[List[str]]
+    lines_count: int
+
+    def get_template(self) -> Iterator[List[str]]:
+        return self.lines
+
+    def __repr__(self):
+        s = 'PoemTemplate(poet=%s, title=%s\n' % (repr(self.poem.poet), self.poem.title)
+        for line in self.lines:
+            s += '      ' + " ".join(line) + '\n'
+        return s + ')'
+
+    def __str__(self):
+        return self.__repr__()
