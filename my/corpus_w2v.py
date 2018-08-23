@@ -111,7 +111,11 @@ class CorpusW2v(object):
     def mean_vector(self, text: str):
         lemmas = [lemma(w) for w in get_cyrillic_words(text)]
         vectors = [self.model.wv.word_vec(w, use_norm=True) for w in lemmas if w in self.model.wv]
-        return matutils.unitvec(np.array(vectors).mean(axis=0)).astype('float32')
+        if vectors:
+            return matutils.unitvec(np.array(vectors).mean(axis=0)).astype('float32')
+        else:
+            print("Can't build mean vector: %s" % text)
+            return np.zeros((self.model.vector_size,))
 
     def distance(self, vec1, vec2):
         if vec1 is None or vec2 is None:
