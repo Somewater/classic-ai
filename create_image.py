@@ -28,4 +28,4 @@ if __name__ == '__main__':
                                                         'wiki_corpus_w2v.bin.trainables.syn1neg.npy',
                                                         'wiki_corpus_w2v.bin.wv.vectors.npy'])
         zip.write(os.path.join(root_path, 'my', 'metadata.json'), 'metadata.json')
-        zip.write(os.path.join(root_path, 'my', 'server.py'), 'server.py')
+        zip.write(os.path.join(root_path, 'server.py'), 'server.py')
