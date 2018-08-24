@@ -7,7 +7,7 @@ import bz2
 from lxml import etree
 import csv
 import re
-from collections import defaultdict
+from collections import defaultdict, Counter
 import itertools
 import nltk
 
@@ -213,13 +213,28 @@ class DataReader:
         return wc
 
     def read_freq_wikipedia(self) -> Dict[str, float]:
-        words_all = 17118.429422
-        wc = dict()
-        with open(os.path.join('data', 'freq', 'wikipedia_freq_100k.txt')) as f:
+        return self._read_word_count(os.path.join('data', 'freq', 'wikipedia_freq_100k.txt'), 17118.429422)
+
+    def read_freq_flibusta(self) -> Dict[str, float]:
+        return self._read_word_count(os.path.join('data', 'freq', 'word_frequency_flibusta_0.txt'))
+
+    def read_freq_puhlyi(self) -> Dict[str, float]:
+        return self._read_word_count(os.path.join('data', 'freq', 'word_frequency_by_puhlyi.txt'))
+
+    def _read_word_count(self, filepath: str, words_all: float = None):
+        if words_all is None:
+            words_all = 0
+            with open(filepath) as f:
+                for line in f:
+                    cnt = int(line[:10])
+                    words_all += cnt
+            words_all = words_all / 1000000
+        wc = Counter()
+        with open(filepath) as f:
             for line in f:
                 cnt = int(line[:10])
-                text = line[11:].strip()
-                wc[text] = cnt / words_all
+                text = line[11:].strip().lower()
+                wc[text] += cnt / words_all
         return wc
 
     def save_word_count(self, wc: Dict[str, int], filepath: str = 'data/word_count.csv'):

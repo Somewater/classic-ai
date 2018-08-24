@@ -4,6 +4,7 @@ from my import DataReader, Word
 import pickle
 from collections import defaultdict, Counter
 from my.utils import lemma
+import marisa_trie
 
 
 class Frequency(object):
@@ -22,7 +23,9 @@ class Frequency(object):
         for need_lemmatization, generator in [(False, self.reader.read_freq_2011),
                                               (False, self.reader.read_freq_hagen),
                                               (True, self.reader.read_freq_litc_win),
-                                              (False, self.reader.read_freq_wikipedia)]:
+                                              (False, self.reader.read_freq_wikipedia),
+                                              (False, self.reader.read_freq_flibusta),
+                                              (False, self.reader.read_freq_puhlyi)]:
             wc = generator()
             if need_lemmatization:
                 wc2 = Counter()
@@ -41,6 +44,7 @@ class Frequency(object):
             wc[w] = sum(cs) / len(cs)
         self.word_count = wc
         self._max_freq = max(self.word_count.values())
+        self.tree = marisa_trie.RecordTrie('<f', [(w, (c,)) for w, c in wc.items()])
 
     def save(self):
         if self.word_count is None:
