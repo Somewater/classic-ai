@@ -22,7 +22,6 @@ preparator = WikiPagePreparator()
 corpus = WikiCorpus(reader, type='lemm')
 corpusw2v = CorpusW2v(corpus, reader)
 
-corpusw2v.load()
 nn1 = NN1(reader, corpusw2v)
 nn2 = NN2(reader, corpusw2v)
 nn3 = NN3(reader, corpusw2v)

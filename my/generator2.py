@@ -70,6 +70,7 @@ class Generator2:
     """
     BeforeSpaceChars = set(['«', "'", '"', '№'])
     NoSpaceChars = set(['’', "'"])
+    EndSentenceChars = set(['.', '!', '?', '…'])
 
     def __init__(self, rand_seed: int = None):
         self.random = random.Random(rand_seed)
@@ -352,7 +353,7 @@ class Generator2:
                         generated_line += ' ' + word
                     else:
                         no_space_char = word in Generator2.NoSpaceChars
-                        big_letter_after = word == '.'
+                        big_letter_after = word in Generator2.EndSentenceChars
                         generated_line += word
             result.append(generated_line.strip()[:120])
         return result

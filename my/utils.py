@@ -67,7 +67,7 @@ def is_cyrillic_line(line: str) -> bool:
     else:
         return False
 
-def unify_chars(line: str) -> str:
+def unify_chars(line0: str) -> str:
     # return line.replace('_', '').replace(STRESS, '').replace(NBSP, ' ') \
     #     .replace(HYPHEN1, '-').replace(HYPHEN2, '-').replace(HYPHEN3, '-').replace(HYPHEN4, '-') \
     #     .replace(SPACE1, ' ').replace(SPACE2, ' ').replace('*', '') \
@@ -79,21 +79,29 @@ def unify_chars(line: str) -> str:
     #     .replace('‹', '').replace('›', '') \
     #     .replace('|', ' ')
     chars = []
+    line = line0.replace('...', '…').replace('…..', '…').replace('….', '…').replace('!..', '!').replace('?..', '?').replace('..', '…')
+    prev_char = ''
+    prev_char_cnt = 0
     for c in line:
         skip_char = c == '_' or c == STRESS or c == '*' or c == '[' or c == ']' or c == '(' or c == ')' or c == '{' or c == '}'\
                     or c == '<' or c == '>' or c == '„' or c == '“' or c == '”' or c == '‹' or c == '›' \
                     or c == '«' or c == '»' or c == '"' or c == "'" or c == CHR_47 or c == CHR_769
         if not skip_char:
+            if c == prev_char:
+                prev_char_cnt += 1
+            else:
+                prev_char_cnt = 0
             replace_to_space = c == NBSP or c == SPACE1 or c == SPACE2 or c == '|' or c == '_'
             if replace_to_space:
-                chars.append(' ')
+                c = ' '
             else:
                 replace_to_hyphen = c == HYPHEN1 or c == HYPHEN2 or c == HYPHEN3 or c == HYPHEN4
                 if replace_to_hyphen:
-                    chars.append('-')
-                else:
-                    chars.append(c)
-    return ''.join(chars)
+                    c = '-'
+            if prev_char_cnt == 0 or is_cyrillic(c) or (c not in AllowedPunctuation):
+                chars.append(c)
+            prev_char = c
+    return ''.join(chars).strip()
 
 def get_cyrillic_words(line: str) -> List[str]:
     words = []
