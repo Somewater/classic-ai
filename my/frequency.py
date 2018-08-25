@@ -8,26 +8,29 @@ import marisa_trie
 
 
 class Frequency(object):
-    def __init__(self, reader: DataReader):
+    def __init__(self, reader: DataReader, lemmatize=True):
         self.reader = reader
         self.word_count = None
         self._max_freq = None
+        self.lemmatize = lemmatize
 
     def load(self):
+        self.tree = marisa_trie.RecordTrie('<f')
+        self.tree.load('data/frequency_tree.bin')
         with open('data/frequency.pickle', 'rb') as f:
-            self.word_count = pickle.load(f)
-            self._max_freq = max(self.word_count.values())
+            self._max_freq = pickle.load(f)
 
     def load_from_dictionary(self):
         wc_lists = defaultdict(list)
-        for need_lemmatization, generator in [(False, self.reader.read_freq_2011),
-                                              (False, self.reader.read_freq_hagen),
-                                              (True, self.reader.read_freq_litc_win),
-                                              (False, self.reader.read_freq_wikipedia),
-                                              (False, self.reader.read_freq_flibusta),
-                                              (False, self.reader.read_freq_puhlyi)]:
+        for need_lemmatization, generator, source_name in [(False, self.reader.read_freq_2011, '2011'),
+                                              (False, self.reader.read_freq_hagen, 'hagen'),
+                                              (True, self.reader.read_freq_litc_win, 'litc_win'),
+                                              (False, self.reader.read_freq_wikipedia, 'wikipedia'),
+                                              (True, self.reader.read_freq_flibusta, 'flibusta'),
+                                              (True, self.reader.read_freq_puhlyi, 'puhlyi')]:
+            print('read %s' % source_name)
             wc = generator()
-            if need_lemmatization:
+            if self.lemmatize and need_lemmatization:
                 wc2 = Counter()
                 for w, ipm in wc.items():
                     wc2[lemma(w.lower())] += ipm
@@ -37,6 +40,7 @@ class Frequency(object):
                 for w, ipm in wc.items():
                     wc2[w.lower()] += ipm
                 wc = wc2
+            wc2 = None
             for w, ipm in wc.items():
                 wc_lists[w].append(ipm)
         wc = dict()
@@ -44,21 +48,26 @@ class Frequency(object):
             wc[w] = sum(cs) / len(cs)
         self.word_count = wc
         self._max_freq = max(self.word_count.values())
-        self.tree = marisa_trie.RecordTrie('<f', [(w, (c,)) for w, c in wc.items()])
+        self.tree = marisa_trie.RecordTrie('<f', [(w, (ipm,)) for w, ipm in wc.items()])
 
     def save(self):
         if self.word_count is None:
             raise RuntimeError("Dictionaries not loaded yet")
+        self.tree.save('data/frequency_tree.bin')
         with open('data/frequency.pickle', 'wb') as f:
-            pickle.dump(self.word_count, f)
+            pickle.dump(self._max_freq, f)
 
     def freq(self, word: Union[str, Word]) -> float:
-        if self.word_count is None:
+        if self.tree is None:
             print("Frequency loading...")
             self.load()
         if isinstance(word, Word):
             word = word.text
-        return self.word_count.get(word.lower()) or 0.0
+        text = word.lower().replace('ё', 'е')
+        if text in self.tree:
+            return self.tree[text]
+        else:
+            return 0.0
 
     def max_freq(self):
         return self._max_freq

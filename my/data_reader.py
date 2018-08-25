@@ -213,7 +213,7 @@ class DataReader:
         return wc
 
     def read_freq_wikipedia(self) -> Dict[str, float]:
-        return self._read_word_count(os.path.join('data', 'freq', 'wikipedia_freq_100k.txt'), 17118.429422)
+        return self._read_word_count(os.path.join('data', 'freq', 'wikipedia_freq_100k.txt'), 17118.429422, 100)
 
     def read_freq_flibusta(self) -> Dict[str, float]:
         return self._read_word_count(os.path.join('data', 'freq', 'word_frequency_flibusta_0.txt'))
@@ -221,7 +221,7 @@ class DataReader:
     def read_freq_puhlyi(self) -> Dict[str, float]:
         return self._read_word_count(os.path.join('data', 'freq', 'word_frequency_by_puhlyi.txt'))
 
-    def _read_word_count(self, filepath: str, words_all: float = None):
+    def _read_word_count(self, filepath: str, words_all: float = None, min_count: int = 5):
         if words_all is None:
             words_all = 0
             with open(filepath) as f:
@@ -229,12 +229,16 @@ class DataReader:
                     cnt = int(line[:10])
                     words_all += cnt
             words_all = words_all / 1000000
-        wc = Counter()
+        wc0 = Counter()
         with open(filepath) as f:
             for line in f:
                 cnt = int(line[:10])
                 text = line[11:].strip().lower()
-                wc[text] += cnt / words_all
+                wc0[text] += cnt
+        wc = dict()
+        for w,c in wc0.items():
+            if c >= min_count:
+                wc[w] = c / words_all
         return wc
 
     def save_word_count(self, wc: Dict[str, int], filepath: str = 'data/word_count.csv'):
