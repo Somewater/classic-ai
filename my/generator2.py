@@ -220,6 +220,7 @@ class Generator2:
             template = template[offset: (offset + 8)]
         else:
             template = template[:8]
+        template = copy.deepcopy(template)
 
         # оцениваем word2vec-вектор темы
         seed_mean_vector = self.corpusw2v.mean_vector(request.seed)
