@@ -79,6 +79,7 @@ class Generator2:
         self.freq = Frequency(self.reader)
         self.ortho = OrthoDict(self.freq)
         self.poems = ClassicPoems(self.reader, self.random)
+        self.corpusw2v = CorpusW2v(WikiCorpus(self.reader, 'lemm'), self.reader)
         self.morph = None
         self.started = False
         self.tasks_queue = SimpleQueue()
@@ -95,7 +96,6 @@ class Generator2:
         if not self.ortho.loaded():
             self.ortho.load()
             self.log.info('Ortho dictionary ready')
-        self.corpusw2v = CorpusW2v(WikiCorpus(self.reader, 'lemm'), self.reader)
         self.corpusw2v.load()
         self.log.info('Word2Vec ready')
         for w in self.ortho.words:
@@ -230,7 +230,7 @@ class Generator2:
         elif process_type == 's':
             template = self.process_sequence(template, seed_mean_vector, start_time)
 
-        return PoemResult(request, poem_template.poem, self._lines_from_template(template),
+        return PoemResult(request, poem_template, self._lines_from_template(template),
                           round(time.time() - start_time, 3),
                           offset)
 

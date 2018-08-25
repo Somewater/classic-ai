@@ -65,7 +65,7 @@ class Frequency(object):
             word = word.text
         text = word.lower().replace('ё', 'е')
         if text in self.tree:
-            return self.tree[text]
+            return self.tree[text][0][0]
         else:
             return 0.0
 
