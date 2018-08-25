@@ -237,7 +237,7 @@ class OrthoDict:
         return all_results
 
     def find_word(self, text: str) -> Optional[Word]:
-        variants = self._text_to_words.get(text.lower())
+        variants = self._text_to_words.get(text)
         if variants:
             if len(variants) == 1:
                 return variants[0]
@@ -248,6 +248,34 @@ class OrthoDict:
                     return variants[1]
             else:
                 return None
+        else:
+            yo_index = text.find('ё')
+            if yo_index != -1:
+                return Word(text, stressed_index=yo_index, dictionary_name='none')
+            else:
+                first_vowel_index = 0
+                vowel_count = 0
+                for idx, c in enumerate(text):
+                    if c in Phonetic.VOWELS:
+                        first_vowel_index = idx
+                        vowel_count += 1
+                if vowel_count == 0:
+                    if len(text) > 1:
+                        return self._create_no_vowel_words(text)
+                elif vowel_count == 1:
+                    return Word(text, stressed_index=first_vowel_index, dictionary_name='none')
+
+    VowelizeChar = {
+        'б': ('бэ', 1), 'в': ('вэ', 1), 'г': ('гэ', 1), 'д': ('дэ', 1), 'ж': ('жэ', 1), 'з': ('зэ', 1), 'й': ('йи', 1),
+        'к': ('кэ', 1), 'л': ('эл', 0), 'м': ('эм', 0), 'н': ('эн', 0), 'п': ('пэ', 1), 'р': ('эр', 0), 'с': ('эс', 0),
+        'т': ('тэ', 1), 'ф': ('эф', 0), 'х': ('хэ', 1), 'ц': ('цэ', 1), 'ч': ('че', 1), 'ш': ('шэ', 1), 'щ': ('ще', 1)}
+
+    def _create_no_vowel_words(self, text: str) -> Word:
+        last_char = text[-1]
+        replace, stress_index = OrthoDict.VowelizeChar[last_char]
+        stress_index += len(text) - 1
+        new_text = text[:-1] + replace
+        return Word(new_text, stressed_index=stress_index, dictionary_name='none')
 
     def find_stressed_index(self, text: str) -> Optional[int]:
         word = self.find_word(text)
