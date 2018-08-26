@@ -23,8 +23,9 @@ if __name__ == '__main__':
     output_filename = os.path.join(root_path, 'my-%s.zip' % now)
     with zipfile.ZipFile(output_filename, "w", zipfile.ZIP_DEFLATED) as zip:
         zip_files(zip, os.path.join(root_path, 'my'), '*')
-        zip_files(zip, os.path.join(root_path, 'data'), ['stop_words.csv', 'frequency.pickle', 'ortho.pickle',
-                                                         'frequency_tree.bin'])
+        zip_files(zip, os.path.join(root_path, 'data'), ['stop_words.csv', 'ortho.pickle',
+                                                         'frequency.pickle', 'frequency_tree.bin',
+                                                         'frequency_lemms.pickle', 'frequency_tree_lemms.bin'])
         zip_files(zip, os.path.join(root_path, 'tmp'), ['wiki_corpus_w2v.bin',
                                                         'wiki_corpus_w2v.bin.trainables.syn1neg.npy',
                                                         'wiki_corpus_w2v.bin.wv.vectors.npy'])

@@ -1,4 +1,4 @@
-from typing import Dict, Union
+from typing import Dict, Union, Iterator, Tuple
 
 from my import DataReader, Word
 import pickle
@@ -8,7 +8,7 @@ import marisa_trie
 
 
 class Frequency(object):
-    def __init__(self, reader: DataReader, lemmatize=True):
+    def __init__(self, reader: DataReader, lemmatize=False):
         self.reader = reader
         self.word_count = None
         self._max_freq = None
@@ -73,3 +73,8 @@ class Frequency(object):
 
     def max_freq(self):
         return self._max_freq
+
+    def iterate_words(self, min_ipm=0.01) -> Iterator[Tuple[str, float]]:
+        for w, (ipm, ) in self.tree.iteritems():
+            if ipm >= min_ipm:
+                yield w, ipm

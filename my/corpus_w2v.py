@@ -20,7 +20,7 @@ class CorpusW2v(object):
         self.corpus = corpus
         self.reader = reader
         self.stop_words = reader.read_stop_words()
-        self.model_filepath = self.reader.get_tmp_filepath(self.corpus.name() + '_w2v.bin')
+        self.model_filepath = self.reader.get_tmp_filepath((self.corpus and self.corpus.name() or 'wiki_corpus') + '_w2v.bin')
         self.model = Word2Vec(size=vector_size, window=5, min_count=5, workers=multiprocessing.cpu_count(),
                               max_final_vocab=100000, hs=1)
         self.helper = DataHelper(reader)
@@ -62,6 +62,7 @@ class CorpusW2v(object):
         if os.path.exists(self.model_filepath + '.index'):
             self.indexer = AnnoyIndexer()
             self.indexer.load(self.model_filepath + '.index')
+        return self
 
     def find_similar_words(self, words: List[str], stemmer: Callable[[str], str] = None, topn=1000) -> Iterator[str]:
         word_in_corpus = []
@@ -109,19 +110,41 @@ class CorpusW2v(object):
         return np.mean(word_vectors, axis=0)
 
     def mean_vector(self, text: str):
-        lemmas = [lemma(w) for w in get_cyrillic_words(text)]
-        vectors = [self.model.wv.word_vec(w, use_norm=True) for w in lemmas if w in self.model.wv]
+        vectors = self.vectors(text)
         if vectors:
             return matutils.unitvec(np.array(vectors).mean(axis=0)).astype('float32')
         else:
             print("Can't build mean vector: %s" % text)
             return np.zeros((self.model.vector_size,))
 
-    def distance(self, vec1, vec2):
+    def vectors(self, text: str):
+        lemmas = [lemma(w) for w in get_cyrillic_words(text)]
+        vectors = [self.model.wv.word_vec(w, use_norm=True) for w in lemmas if w in self.model.wv]
+        if vectors:
+            return vectors
+        else:
+            print("Can't build mean vector: %s" % text)
+            return np.zeros((self.model.vector_size,))
+
+    def distance(self, vec1, vec2, strategy = 'min'):
         if vec1 is None or vec2 is None:
             return 2
-        r = cosine(vec1, vec2)
-        return r
+        if isinstance(vec1, Seed):
+            seed: Seed = vec1
+            if strategy == 'min':
+                scores = [cosine(vec2, v) for v in seed.vectors]
+                return min(scores)
+            elif strategy == 'mean':
+                scores = [cosine(vec2, v) for v in seed.vectors]
+                return sum(scores) / len(scores)
+            elif strategy == 'weighted_min':
+                vector, weight = min(seed.weighted_vectors, key=lambda pair: cosine(vec2, pair[0]))
+                return cosine(vec2, vector) * weight
+            elif strategy == 'mean_vector':
+                return cosine(vec2, seed.mean_vector)
+        else:
+            r = cosine(vec1, vec2)
+            return r
 
     @staticmethod
     def create_fasttext_model(self):

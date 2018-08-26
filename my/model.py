@@ -1,6 +1,8 @@
-from typing import NamedTuple, Iterator, List, Dict
+from typing import NamedTuple, Iterator, List, Dict, Optional, Tuple
 from my.utils import get_cyrillic_lines, get_cyrillic_words, get_lines, MakeIter, is_cyrillic, lemma
 from collections import namedtuple, defaultdict
+import numpy as np
+from math import *
 
 class Topic(object):
     def get_title(self) -> str:
@@ -154,6 +156,7 @@ class PoemResult(NamedTuple):
     lines: List[str]
     time_seconds: float
     source_offset: int
+    replaces: dict = None
 
     def content(self):
         return '\n'.join(self.lines)
@@ -278,3 +281,30 @@ class PoemTemplate(namedtuple('PoemTemplate', ['poem', 'lines', 'lines_count']),
 
     def __str__(self):
         return self.__repr__()
+
+class Seed:
+    text: str
+    words: List[str] # cyrilic words
+    lemms: List[str]
+    vectors: List[Optional[np.array]]
+    mean_vector: np.array
+    frequencies: List[float]
+
+    idfs: List[float]
+    weighted_vectors: List[Tuple[np.array, float]]
+
+    def __init__(self, text, words, lemms, vectors, mean_vector, frequencies):
+        self.text = text
+        self.words = words
+        self.lemms = lemms
+        self.vectors = vectors
+        self.mean_vector = mean_vector
+        self.frequencies = frequencies
+        self.frequencies = frequencies
+
+        self.idfs = [log(1000000 / ipm) for ipm in self.frequencies]
+        self.weighted_vectors = []
+        zipped_data = [(v,f) for v,f in zip(self.vectors, self.idfs) if v is not None]
+        max_idf = log(1000000 / (0.0003))
+        for v, idf in zipped_data:
+            self.weighted_vectors.append((v, idf / max_idf))
