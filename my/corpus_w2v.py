@@ -126,7 +126,7 @@ class CorpusW2v(object):
             print("Can't build mean vector: %s" % text)
             return np.zeros((self.model.vector_size,))
 
-    def distance(self, vec1, vec2, strategy = 'min'):
+    def distance(self, vec1, vec2, strategy = 'min_freq'):
         if vec1 is None or vec2 is None:
             return 2
         if isinstance(vec1, Seed):
@@ -137,9 +137,12 @@ class CorpusW2v(object):
             elif strategy == 'mean':
                 scores = [cosine(vec2, v) for v in seed.vectors]
                 return sum(scores) / len(scores)
-            elif strategy == 'weighted_min':
-                vector, weight = min(seed.weighted_vectors, key=lambda pair: cosine(vec2, pair[0]))
-                return cosine(vec2, vector) * weight
+            elif strategy == 'min_idf':
+                vector, idf, freq = min(seed.weighted_vectors, key=lambda pair: cosine(vec2, pair[0]))
+                return cosine(vec2, vector) / idf * 22 # max idf
+            elif strategy == 'min_freq':
+                vector, idf, freq = min(seed.weighted_vectors, key=lambda pair: cosine(vec2, pair[0]))
+                return cosine(vec2, vector) * freq / 42329 # max freq
             elif strategy == 'mean_vector':
                 return cosine(vec2, seed.mean_vector)
         else:

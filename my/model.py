@@ -291,7 +291,7 @@ class Seed:
     frequencies: List[float]
 
     idfs: List[float]
-    weighted_vectors: List[Tuple[np.array, float]]
+    weighted_vectors: List[Tuple[np.array, float, float]] # vector, idf, freq
 
     def __init__(self, text, words, lemms, vectors, mean_vector, frequencies):
         self.text = text
@@ -304,7 +304,7 @@ class Seed:
 
         self.idfs = [log(1000000 / ipm) for ipm in self.frequencies]
         self.weighted_vectors = []
-        zipped_data = [(v,f) for v,f in zip(self.vectors, self.idfs) if v is not None]
+        zipped_data = [(v, idf, freq) for v, idf, freq in zip(self.vectors, self.idfs, self.frequencies) if v is not None]
         max_idf = log(1000000 / (0.0003))
-        for v, idf in zipped_data:
-            self.weighted_vectors.append((v, idf / max_idf))
+        for v, idf, freq in zipped_data:
+            self.weighted_vectors.append((v, idf, freq))

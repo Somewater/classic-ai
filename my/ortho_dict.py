@@ -192,7 +192,10 @@ class OrthoDict:
                             str_or_none(tag.number), str_or_none(tag.person), str_or_none(tag.gender))
         logging.info('Tags prepared')
         for w in self.words:
-            w.frequency = self.frequency.freq(w.text)
+            freq = self.frequency.freq(w.text)
+            if freq == 0:
+                freq = self.frequency.freq(w.lemma) * 0.95
+            w.frequency = freq
         logging.info('Frequency prepared')
         for w in self.words:
             w.normal_form = None

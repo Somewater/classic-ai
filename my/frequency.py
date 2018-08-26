@@ -15,6 +15,7 @@ class Frequency(object):
         self.lemmatize = lemmatize
         self.filepath_tree = 'data/frequency_tree_lemms.bin' if lemmatize else 'data/frequency_tree.bin'
         self.filepath_pickle = 'data/frequency_lemms.pickle' if lemmatize else 'data/frequency.pickle'
+        self.tree = None
 
     def load(self):
         self.tree = marisa_trie.RecordTrie('<f')
