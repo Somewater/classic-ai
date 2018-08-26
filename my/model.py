@@ -300,11 +300,12 @@ class Seed:
         self.vectors = vectors
         self.mean_vector = mean_vector
         self.frequencies = frequencies
-        self.frequencies = frequencies
+        self.max_idf = log(1000000 / (0.0003))
 
-        self.idfs = [log(1000000 / ipm) for ipm in self.frequencies]
         self.weighted_vectors = []
-        zipped_data = [(v, idf, freq) for v, idf, freq in zip(self.vectors, self.idfs, self.frequencies) if v is not None]
-        max_idf = log(1000000 / (0.0003))
-        for v, idf, freq in zipped_data:
-            self.weighted_vectors.append((v, idf, freq))
+        self.idfs = []
+        for v, ipm in  zip(self.vectors, self.frequencies):
+            if v is not None and ipm > 0:
+                idf = log(1000000 / ipm)
+                self.idfs.append(idf)
+                self.weighted_vectors.append((v, idf, ipm))

@@ -49,3 +49,27 @@ generator2.poems.random = generator2.random
 # generator2.poems.random = generator2.random
 # generator3.poems.random = generator3.random
 # generator4.poems.random = generator4.random
+
+# print(requests.post('http://localhost:8000/generate/p', json={'seed': 'регрессиозный'}).json())
+
+"""
+import pandas as pd
+types = ['min', 'mean', 'min_idf', 'mean_vector'] # W/O min_freq!
+pd.options.display.width = 200
+pd.options.display.max_columns = 100
+results = []
+for t in types:
+    generator2.w2v_distance_type = t
+    generator2.random = random.Random(3)
+    generator2.poems.random = generator2.random
+    r = generator2.generate('p', 'проспект осветил луч солнца')
+    results.append((t,r))
+print(r)
+data = [types[:]]
+for i in range(8):
+    data.append([])
+    for t, r in results:
+        if len(r.lines) > i:
+            data[i+1].append(r.lines[i])
+print(pd.DataFrame(data))
+"""
