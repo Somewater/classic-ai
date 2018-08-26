@@ -38,6 +38,7 @@ class MyHandler(BaseHTTPRequestHandler):
         except:
             traceback.print_exc(file=sys.stderr)
             traceback.print_exc()
+            time.sleep(10)
             self.send_response(500)
             self.end_headers()
 

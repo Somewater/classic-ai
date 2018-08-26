@@ -124,7 +124,7 @@ class CorpusW2v(object):
             return vectors
         else:
             print("Can't build mean vector: %s" % text)
-            return np.zeros((self.model.vector_size,))
+            return [np.zeros((self.model.vector_size,))]
 
     def distance(self, vec1, vec2, strategy = 'min_freq'):
         if vec1 is None or vec2 is None:
