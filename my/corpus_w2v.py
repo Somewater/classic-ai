@@ -144,11 +144,17 @@ class CorpusW2v(object):
                 else:
                     return 2
             elif strategy == 'min_idf':
-                vector, idf, freq = min(seed.weighted_vectors, key=lambda pair: cosine(vec2, pair[0]))
-                return cosine(vec2, vector) / idf * 22 # max idf
+                if seed.weighted_vectors:
+                    vector, idf, freq = min(seed.weighted_vectors, key=lambda pair: cosine(vec2, pair[0]))
+                    return cosine(vec2, vector) / idf * 22 # max idf
+                else:
+                    return 2
             elif strategy == 'min_freq': # WORST in the worstests!!!!
-                vector, idf, freq = min(seed.weighted_vectors, key=lambda pair: cosine(vec2, pair[0]))
-                return cosine(vec2, vector) * freq / 42329 # max freq
+                if seed.weighted_vectors:
+                    vector, idf, freq = min(seed.weighted_vectors, key=lambda pair: cosine(vec2, pair[0]))
+                    return cosine(vec2, vector) * freq / 42329 # max freq
+                else:
+                    return 2
             elif strategy == 'mean_vector': # fastest
                 return cosine(vec2, seed.mean_vector)
         else:
