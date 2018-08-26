@@ -8,7 +8,7 @@ from my import DataReader, profiler
 from my.utils import stem, lemma, MakeIter
 import os
 from gensim.corpora import WikiCorpus
-from scipy.spatial.distance import cosine
+#from scipy.spatial.distance import cosine
 import numpy as np
 import multiprocessing
 from gensim.models.callbacks import CallbackAny2Vec
@@ -152,3 +152,7 @@ class CorpusW2v(object):
     @staticmethod
     def create_fasttext_model(self):
         return FastText.load_fasttext_format(os.path.join('data', 'fasttext', 'ru'))
+
+
+def cosine(u, v):
+    return 1.0 - np.average(u * v) / np.sqrt(np.average(np.square(u)) * np.average(np.square(v)))
