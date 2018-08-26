@@ -11,6 +11,7 @@ import logging
 import time
 import pickle
 import pymorphy2
+import gc
 
 class Hagen:
     STRESSED_CHAR = "'"
@@ -199,11 +200,14 @@ class OrthoDict:
             w.dictionary_name = None
 
     def load(self):
+        gc_enabled = gc.isenabled()
+        if gc_enabled: gc.disable()
         with open('data/ortho.pickle', 'rb') as f:
             _rhymes_by_phonetic_after_stress, _text_to_words, words = pickle.load(f)
             self._rhymes_by_phonetic_after_stress = _rhymes_by_phonetic_after_stress
             self._text_to_words = _text_to_words
             self.words = words
+        if gc_enabled: gc.enable()
 
     def loaded(self):
         return self.words is not None

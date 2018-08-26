@@ -13,11 +13,13 @@ class Frequency(object):
         self.word_count = None
         self._max_freq = None
         self.lemmatize = lemmatize
+        self.filepath_tree = 'data/frequency_tree_lemms.bin' if lemmatize else 'data/frequency_tree.bin'
+        self.filepath_pickle = 'data/frequency_lemms.pickle' if lemmatize else 'data/frequency.pickle'
 
     def load(self):
         self.tree = marisa_trie.RecordTrie('<f')
-        self.tree.load('data/frequency_tree.bin')
-        with open('data/frequency.pickle', 'rb') as f:
+        self.tree.load(self.filepath_tree)
+        with open(self.filepath_pickle, 'rb') as f:
             self._max_freq = pickle.load(f)
 
     def load_from_dictionary(self):
@@ -53,8 +55,8 @@ class Frequency(object):
     def save(self):
         if self.word_count is None:
             raise RuntimeError("Dictionaries not loaded yet")
-        self.tree.save('data/frequency_tree.bin')
-        with open('data/frequency.pickle', 'wb') as f:
+        self.tree.save(self.filepath_tree)
+        with open(self.filepath_pickle, 'wb') as f:
             pickle.dump(self._max_freq, f)
 
     def freq(self, word: Union[str, Word]) -> float:

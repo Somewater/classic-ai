@@ -213,7 +213,7 @@ class DataReader:
         return wc
 
     def read_freq_wikipedia(self) -> Dict[str, float]:
-        return self._read_word_count(os.path.join('data', 'freq', 'wikipedia_freq_100k.txt'), 17118.429422, 100)
+        return self._read_word_count(os.path.join('data', 'freq', 'wikipedia_freq.txt'), 17118.429422, 100)
 
     def read_freq_flibusta(self) -> Dict[str, float]:
         return self._read_word_count(os.path.join('data', 'freq', 'word_frequency_flibusta_0.txt'))
@@ -236,9 +236,13 @@ class DataReader:
                 text = line[11:].strip().lower()
                 wc0[text] += cnt
         wc = dict()
+        skipped = 0
         for w,c in wc0.items():
             if c >= min_count:
                 wc[w] = c / words_all
+            else:
+                skipped += 1
+        print('Skipped %d words (%.2f %%) by min_count=%d' % (skipped, 100 * skipped / len(wc0), min_count))
         return wc
 
     def save_word_count(self, wc: Dict[str, int], filepath: str = 'data/word_count.csv'):
