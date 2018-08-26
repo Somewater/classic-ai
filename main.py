@@ -30,20 +30,22 @@ nn4 = NN4(reader, corpusw2v)
 
 print("Initialize all generators...")
 generator2.start()
-
-generator3 = Generator2()
-generator3.start()
-generator3.corpusw2v.model_filepath = 'weights/5-2-500-5e-05-0-1/wiki_w2v.bin'
-generator3.corpusw2v.load()
-
-generator4 = Generator2()
-generator4.start()
-generator4.corpusw2v.model_filepath = 'weights/5-2-500-5e-05-1-1/wiki_w2v.bin'
-generator4.corpusw2v.load()
-
 generator2.random = random.Random(1)
-generator3.random = random.Random(1)
-generator4.random = random.Random(1)
 generator2.poems.random = generator2.random
-generator3.poems.random = generator3.random
-generator4.poems.random = generator4.random
+
+# generator3 = Generator2()
+# generator3.start()
+# generator3.corpusw2v.model_filepath = 'weights/5-2-500-5e-05-0-1/wiki_w2v.bin'
+# generator3.corpusw2v.load()
+#
+# generator4 = Generator2()
+# generator4.start()
+# generator4.corpusw2v.model_filepath = 'weights/5-2-500-5e-05-1-1/wiki_w2v.bin'
+# generator4.corpusw2v.load()
+#
+# generator2.random = random.Random(1)
+# generator3.random = random.Random(1)
+# generator4.random = random.Random(1)
+# generator2.poems.random = generator2.random
+# generator3.poems.random = generator3.random
+# generator4.poems.random = generator4.random

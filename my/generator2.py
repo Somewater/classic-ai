@@ -80,11 +80,13 @@ class Generator2:
         self.ortho = OrthoDict(self.freq)
         self.poems = ClassicPoems(self.reader, self.random)
         self.corpusw2v = CorpusW2v(WikiCorpus(self.reader, 'lemm'), self.reader)
+        self.tree = TrieNode()
         self.morph = None
         self.started = False
         self.tasks_queue = SimpleQueue()
         self.results_queue = SimpleQueue()
         self.cpu_count = 2 # max(cpu_count(), 4)
+        self.debug = False
 
     def start(self):
         self.poems.load()
@@ -105,6 +107,14 @@ class Generator2:
         self.stop_words = self.reader.read_stop_words()
         self._generate_word_by_form()
         self.log.info('Word by form ready')
+        added_word_text = set()
+        for w in self.ortho.words:
+            self.tree.insert(w)
+            added_word_text.add(w.text)
+        #for word_text in self.freq.iterate_words():
+        #    if not word_text in added_word_text:
+        #        self.tree.insert(word_text)
+        self.log.info('Tree-levenshtein ready')
         self.morph = pymorphy2.MorphAnalyzer()
         self.started = True
 
@@ -123,18 +133,18 @@ class Generator2:
     def run_worker(self, worker_id: int, tasks_queue: SimpleQueue, results_queue: SimpleQueue):
         gc.disable()
         while True:
-            template_line, line_idx, seed_mean_vector = tasks_queue.get()
-            generated_line = self.generate_line(template_line, line_idx, seed_mean_vector)
+            template_line, line_idx, seed = tasks_queue.get()
+            generated_line = self.generate_line(template_line, line_idx, seed)
             results_queue.put(((generated_line, line_idx), worker_id))
 
     def run_once(self,
                  template_lines: Iterator[Tuple[List[str], int]],
-                 seed_mean_vector: np.array,
+                 seed: Seed,
                  start_time: float,
                  results_queue: SimpleQueue):
         result = []
         for template_line, line_idx in template_lines:
-            generated_line = self.generate_line(template_line, line_idx, seed_mean_vector)
+            generated_line = self.generate_line(template_line, line_idx, seed)
             result.append((generated_line, line_idx))
         results_queue.put(result)
 
@@ -153,14 +163,14 @@ class Generator2:
                     if case:
                         self.word_by_form_by_pos_by_case[(form, pos, case)].add(word)
 
-    def process_in_parallel_with_workers(self, template, seed_mean_vector, start_time):
+    def process_in_parallel_with_workers(self, template, seed, start_time):
         if not self.workers:
             self.log.warning('Workers started amoung generation')
             self.start_workers()
 
         task_counter = 0
         for li, line in enumerate(template):
-            self.tasks_queue.put((line, li, seed_mean_vector))
+            self.tasks_queue.put((line, li, seed))
             task_counter += 1
 
         while task_counter > 0:
@@ -174,7 +184,7 @@ class Generator2:
                 break
         return template
 
-    def process_in_parallel(self, template, seed_mean_vector, start_time):
+    def process_in_parallel(self, template, seed, start_time):
         workers = []
         line_per_worker = ceil(len(template) / self.cpu_count)
         lines_count = len(template)
@@ -187,7 +197,7 @@ class Generator2:
                 lines.append((template[i], i))
                 i += 1
             if lines:
-                p = Process(target=self.run_once, args=(lines, seed_mean_vector, start_time, self.results_queue))
+                p = Process(target=self.run_once, args=(lines, seed, start_time, self.results_queue))
                 workers.append(p)
                 p.start()
 
@@ -197,18 +207,28 @@ class Generator2:
                 template[line_idx] = generated_line
         return template
 
-    def process_sequence(self, template, seed_mean_vector, start_time):
+    def process_sequence(self, template, seed: Seed, start_time):
         used_replacement_lemms = set()
-        return [self.generate_line(template_line, line_idx, seed_mean_vector, used_replacement_lemms)
+        return [self.generate_line(template_line, line_idx, seed, used_replacement_lemms)
                 for line_idx, template_line in enumerate(template)]
 
-    def generate(self, poet_id: str, seed: str, process_type: str = 's') -> PoemResult:
+    def build_seed(self, text: str) -> Seed:
+        seed_words = get_cyrillic_words(text)
+        seed_lemms = [lemma(w) for w in seed_words]
+        return Seed(text,
+                    seed_words,
+                    seed_lemms,
+                    [self.corpusw2v.word_vector(l) for l in seed_lemms],
+                    self.corpusw2v.mean_vector(text),
+                    [self.freq.freq(w) for w in seed_words])
+
+    def generate(self, poet_id: str, seed_text: str, process_type: str = 's') -> PoemResult:
         if not self.started:
             self.log.warning('Method start() invoked amoung generation')
             self.start()
         start_time = time.time()
         poet_id = Poet.recover(poet_id)
-        request = PoemRequest(Poet.by_poet_id(poet_id), seed)
+        request = PoemRequest(Poet.by_poet_id(poet_id), seed_text.lower())
 
         # выбираем шаблон на основе случайного стихотворения из корпуса
         poem_template: PoemTemplate = self.poems.get_random_template(request.poet)
@@ -221,24 +241,26 @@ class Generator2:
         else:
             template = template[:8]
         template = copy.deepcopy(template)
+        self.replaces = dict()
 
         # оцениваем word2vec-вектор темы
-        seed_mean_vector = self.corpusw2v.mean_vector(request.seed)
+        seed = self.build_seed(request.seed)
         if process_type == 'w':
-            template = self.process_in_parallel_with_workers(template, seed_mean_vector, start_time)
+            template = self.process_in_parallel_with_workers(template, seed, start_time)
         elif process_type == 'p':
-            template = self.process_in_parallel(template, seed_mean_vector, start_time)
+            template = self.process_in_parallel(template, seed, start_time)
         elif process_type == 's':
-            template = self.process_sequence(template, seed_mean_vector, start_time)
+            template = self.process_sequence(template, seed, start_time)
 
         return PoemResult(request, poem_template, self._lines_from_template(template),
                           round(time.time() - start_time, 3),
-                          offset)
+                          offset,
+                          self.replaces)
 
     def generate_line(self,
                       template_line: List[str],
                       line_idx: int,
-                      seed_mean_vector: np.array,
+                      seed: Seed,
                       used_replacement_lemms: Set[str] = None) -> List[str]:
         if used_replacement_lemms is None:
             used_replacement_lemms = set()
@@ -253,7 +275,7 @@ class Generator2:
                     replacements_params: List[Tuple[Word, float, float, WordResult]] = [
                         (
                             wr.word,
-                            self.corpusw2v.distance(seed_mean_vector, wr.word.vector),
+                            self.corpusw2v.distance(seed, wr.word.vector),
                             self.phonetic.sound_distance(wr.word.text, word),
                             wr
                         )
@@ -261,25 +283,48 @@ class Generator2:
                         if self._filter_candidates_by_params(wr.word, word_tag, word) and wr.word.lemma not in used_replacement_lemms
                     ]
                 else:
-                    replacements_params: List[Tuple[Word, float, float, WordResult]] = [
-                        (
-                            wrd,
-                            self.corpusw2v.distance(seed_mean_vector, wrd.vector),
-                            self.phonetic.sound_distance(wrd.text, word),
-                            None
-                        )
-                        for wrd in self._find_by_form(word, word_tag)
-                        if self._filter_candidates_by_params(wrd, word_tag, word) and wrd.lemma not in used_replacement_lemms
-                    ]
+                    replacements_with_levenshtein_dist = self.tree.search(word, 3)
+                    if replacements_with_levenshtein_dist:
+                        replacements_params: List[Tuple[Word, float, float, WordResult]] = [
+                            (
+                                wrd,
+                                self.corpusw2v.distance(seed, wrd.vector),
+                                levenshtein_distance,# self.phonetic.sound_distance(wrd.text, word),
+                                None
+                            )
+                            # for wrd in self._find_by_form(word, word_tag)
+                            for wrd, levenshtein_distance in replacements_with_levenshtein_dist # TODO: not sorted!
+                            if self._filter_candidates_by_params(wrd, word_tag, word) and wrd.lemma not in used_replacement_lemms
+                        ]
+                    else:
+                        replacements_by_form =  self._find_by_form(word, word_tag)
+                        replacements_params: List[Tuple[Word, float, float, WordResult]] = [
+                            (
+                                wrd,
+                                self.corpusw2v.distance(seed, wrd.vector),
+                                self.phonetic.sound_distance(wrd.text, word),
+                                None
+                            )
+                            for wrd in replacements_by_form
+                            if self._filter_candidates_by_params(wrd, word_tag, word) and wrd.lemma not in used_replacement_lemms
+                        ]
 
                 if replacements_params:
-                    new_wrd = min(replacements_params, key=self._sort_candidates_by_params)[0]
+                    if self.debug:
+                        replacements_params = sorted(replacements_params, key=lambda x: self._sort_candidates_by_params(x, debug=False))
+                        for t in reversed(replacements_params): self._sort_candidates_by_params(t, debug=True)
+                        new_wrd = replacements_params[0][0] # min(replacements_params, key=self._sort_candidates_by_params)[0]
+                    else:
+                        new_wrd = min(replacements_params, key=self._sort_candidates_by_params)[0]
                     used_replacement_lemms.add(new_wrd.lemma)
                     new_word = new_wrd.text
-                    #replacements_params = sorted(replacements_params, key=self._sort_candidates_by_params) #  TODO: remove mE!!!
-                    #import ipdb; ipdb.set_trace()
+                    if self.debug:
+                        self.replaces[token] = replacements_params
+                        import ipdb; ipdb.set_trace()
                 else:
                     new_word = token
+                    #print('Not found')
+                    #import ipdb; ipdb.set_trace()
             else:
                 new_word = token
             template_line[ti] = new_word
@@ -296,7 +341,7 @@ class Generator2:
             return self.word_by_form[form]
 
     # less is BETTER
-    def _sort_candidates_by_params(self, tuple: Tuple[Word, float, float, WordResult]):
+    def _sort_candidates_by_params(self, tuple: Tuple[Word, float, float, WordResult], debug=False):
         word, w2v_distance, sound_distance, word_result = tuple
         # normalize
         w2v_distance = w2v_distance
@@ -304,9 +349,13 @@ class Generator2:
         freq = word.frequency
         freq = log(self.freq.max_freq()) / log(freq) if freq >= 2 else log(self.freq.max_freq()) / 0.5
         if word_result:
-            return w2v_distance  + word_result.fuzzy * 0.1 + freq * 0.05
+            sm = w2v_distance * 1.1  + word_result.fuzzy * 0.1 + freq * 0.01
+            if debug: print('%s: %.5f (distnance=%.5f, fuzzy=%.5f, freq=%.5f)' % (word, sm, w2v_distance*1.1, word_result.fuzzy * 0.1, freq * 0.01))
+            return sm
         else:
-            return w2v_distance  + sound_distance * 0.1 + freq * 0.05
+            sm = w2v_distance * 1.3  + sound_distance * 0.1 + freq * 0.01
+            if debug: print('%s: %.5f (distnance=%.5f, sound=%.5f, freq=%.5f)' % (word, sm, w2v_distance*1.3, sound_distance * 0.1, freq * 0.01))
+            return sm
 
     def _filter_candidates_by_params(self, word: Word, orig_word_tag: object, orig_word: str):
         if word.text == orig_word or word.lemma == orig_word:
