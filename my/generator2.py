@@ -87,6 +87,7 @@ class Generator2:
         self.results_queue = SimpleQueue()
         self.cpu_count = 2 # max(cpu_count(), 4)
         self.debug = False
+        self.w2v_distance_type = 'mean_vector'
 
     def start(self):
         self.poems.load()
@@ -275,7 +276,7 @@ class Generator2:
                     replacements_params: List[Tuple[Word, float, float, WordResult]] = [
                         (
                             wr.word,
-                            self.corpusw2v.distance(seed, wr.word.vector),
+                            self.corpusw2v.distance(seed, wr.word.vector, self.w2v_distance_type),
                             self.phonetic.sound_distance(wr.word.text, word),
                             wr
                         )
@@ -283,12 +284,12 @@ class Generator2:
                         if self._filter_candidates_by_params(wr.word, word_tag, word) and wr.word.lemma not in used_replacement_lemms
                     ]
                 else:
-                    replacements_with_levenshtein_dist = self.tree.search(word, 3)
+                    replacements_with_levenshtein_dist = None # self.tree.search(word, 3)
                     if replacements_with_levenshtein_dist:
                         replacements_params: List[Tuple[Word, float, float, WordResult]] = [
                             (
                                 wrd,
-                                self.corpusw2v.distance(seed, wrd.vector),
+                                self.corpusw2v.distance(seed, wrd.vector, self.w2v_distance_type),
                                 levenshtein_distance,# self.phonetic.sound_distance(wrd.text, word),
                                 None
                             )
@@ -301,7 +302,7 @@ class Generator2:
                         replacements_params: List[Tuple[Word, float, float, WordResult]] = [
                             (
                                 wrd,
-                                self.corpusw2v.distance(seed, wrd.vector),
+                                self.corpusw2v.distance(seed, wrd.vector, self.w2v_distance_type),
                                 self.phonetic.sound_distance(wrd.text, word),
                                 None
                             )
