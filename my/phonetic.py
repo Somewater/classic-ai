@@ -131,4 +131,36 @@ class Phonetic(object):
         else:
             return char
 
+    @staticmethod
+    def metaphone(text: str) -> str:
+        prev = None
+        result = []
+        for char in text:
+            if char == '-':
+                continue
+            if char != prev :
+                if char == 'о' or char == 'a' or char == 'ы' or char == 'я':
+                    result.append('a')
+                elif char == 'ю' or char == 'у':
+                    result.append('у')
+                elif char == 'е' or char == 'ё' or char == 'э' or char == 'и':
+                    result.append('и')
+                elif char == 'с' and (prev == 'т' or prev == 'д'):
+                    result[-1] = 'ц'
+                elif char == 'б':
+                    result.append('п')
+                elif char == 'в':
+                    result.append('ф')
+                elif char == 'г':
+                    result.append('к')
+                elif char == 'д':
+                    result.append('т')
+                elif char == 'ж':
+                    result.append('ш')
+                elif char == 'з':
+                    result.append('с')
+                else:
+                    result.append(char)
+            prev = char
+        return ''.join(result)
 

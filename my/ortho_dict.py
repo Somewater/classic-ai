@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Union
+from typing import Optional, Dict, Union, Iterator
 from my import Phonetic, Word, lemma
 from my.word import WordTag
 import os
@@ -37,16 +37,19 @@ class Hagen:
                         stressed = stressed.replace('`', '')
                         word = Word.from_stressed(stressed, self.name, stressed_char=Hagen.STRESSED_CHAR,
                                                   stress_char_after=True)
-                        key = word.__hash__()
-                        if word and not key in already_added_hashes:
-                            already_added_hashes.add(key)
-                            if normal_form:
-                                word.normal_form = normal_form
-                                word.is_normal_form = False
-                            else:
-                                word.is_normal_form = True
-                                normal_form = word
-                            self.words.append(word)
+                        if word:
+                            key = (word.text, word.stressed_index)
+                            if word and not key in already_added_hashes:
+                                already_added_hashes.add(key)
+                                if normal_form:
+                                    word.normal_form = normal_form
+                                    word.is_normal_form = False
+                                else:
+                                    word.is_normal_form = True
+                                    normal_form = word
+                                self.words.append(word)
+                        else:
+                            print(line)
                 else:
                     normal_form = None
 
@@ -95,16 +98,19 @@ class Zalizniak:
                         if Word.allow_word(word_text):
                             word = Word.from_stressed(stressed_form, self.name, stressed_char=Zalizniak.STRESSED_CHAR,
                                                       stress_char_after=True)
-                            key = word.__hash__()
-                            if word and not key in already_added_hashes:
-                                already_added_hashes.add(key)
-                                if normal_form:
-                                    word.normal_form = normal_form
-                                    word.is_normal_form = False
-                                else:
-                                    normal_form = word
-                                    word.is_normal_form = True
-                                self.words.append(word)
+                            if word:
+                                key = (word.text, word.stressed_index)
+                                if word and not key in already_added_hashes:
+                                    already_added_hashes.add(key)
+                                    if normal_form:
+                                        word.normal_form = normal_form
+                                        word.is_normal_form = False
+                                    else:
+                                        normal_form = word
+                                        word.is_normal_form = True
+                                    self.words.append(word)
+                            else:
+                                print(line)
 
 class WordResult(object):
     def __init__(self, word: Word, fuzzy = None, freq = None):
@@ -144,7 +150,7 @@ class OrthoDict:
             for word in dictionary.words:
                 if len(word.text) < 3:
                     continue
-                key = word.__hash__()
+                key = (word.text, word.stressed_index)
                 word0: Word = already_added_words.get(key)
                 if word0:
                     # replace to more qualitative information
@@ -247,7 +253,7 @@ class OrthoDict:
                 else:
                     return variants[1]
             else:
-                return None
+                return variants[0] # TODO: just select first
         else:
             yo_index = text.find('ё')
             if yo_index != -1:
