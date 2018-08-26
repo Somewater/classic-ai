@@ -294,6 +294,11 @@ class Seed:
     weighted_vectors: List[Tuple[np.array, float, float]] # vector, idf, freq
 
     def __init__(self, text, words, lemms, vectors, mean_vector, frequencies):
+        assert len(words) > 0
+        assert len(words) == len(lemms)
+        assert len(words) == len(vectors)
+        assert len(words) == len(frequencies)
+
         self.text = text
         self.words = words
         self.lemms = lemms
@@ -301,11 +306,47 @@ class Seed:
         self.mean_vector = mean_vector
         self.frequencies = frequencies
         self.max_idf = log(1000000 / (0.0003))
+        self.max_seed_words_count = 5
+        if len([v for v in self.vectors if v is not None]) > self.max_seed_words_count:
+            self._truncate_vector()
 
         self.weighted_vectors = []
         self.idfs = []
-        for v, ipm in  zip(self.vectors, self.frequencies):
+        for v, ipm in zip(self.vectors, self.frequencies):
             if v is not None and ipm > 0:
                 idf = log(1000000 / ipm)
                 self.idfs.append(idf)
                 self.weighted_vectors.append((v, idf, ipm))
+
+    def _truncate_vector(self):
+        selected_indexies = []
+        selected_index_to_ipm = dict()
+        for i, (v, ipm) in enumerate(zip(self.vectors, self.frequencies)):
+            if v is not None and ipm > 0:
+                selected_index_to_ipm[i] = ipm
+                if len(selected_indexies) < self.max_seed_words_count:
+                    selected_indexies.append(i)
+                else:
+                    index_to_replace = None
+                    index_to_replace_ipm = None
+                    for si in selected_indexies:
+                        si_ipm = selected_index_to_ipm[si]
+                        if ipm < si_ipm and (index_to_replace_ipm is None or index_to_replace_ipm < si_ipm):
+                            index_to_replace = si
+                            index_to_replace_ipm = si_ipm
+                    if index_to_replace is not None:
+                        selected_indexies.remove(index_to_replace)
+                        selected_indexies.append(i)
+        vectors = []
+        frequencies = []
+        words = []
+        lemms = []
+        for i in selected_indexies:
+            vectors.append(self.vectors[i])
+            frequencies.append(self.frequencies[i])
+            words.append(self.words[i])
+            lemms.append(self.lemms[i])
+        self.vectors = vectors
+        self.frequencies = frequencies
+        self.words = words
+        self.lemms = lemms

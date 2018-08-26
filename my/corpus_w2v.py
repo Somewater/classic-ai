@@ -132,11 +132,17 @@ class CorpusW2v(object):
         if isinstance(vec1, Seed):
             seed: Seed = vec1
             if strategy == 'min':
-                scores = [cosine(vec2, v) for v in seed.vectors]
-                return min(scores)
+                scores = [cosine(vec2, v) for v in seed.vectors if v is not None]
+                if scores:
+                    return min(scores)
+                else:
+                    return 2
             elif strategy == 'mean':
-                scores = [cosine(vec2, v) for v in seed.vectors]
-                return sum(scores) / len(scores)
+                scores = [cosine(vec2, v) for v in seed.vectors if v is not None]
+                if scores:
+                    return sum(scores) / len(scores)
+                else:
+                    return 2
             elif strategy == 'min_idf':
                 vector, idf, freq = min(seed.weighted_vectors, key=lambda pair: cosine(vec2, pair[0]))
                 return cosine(vec2, vector) / idf * 22 # max idf
