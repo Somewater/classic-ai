@@ -9,10 +9,12 @@ class ClassicPoems:
         self.reader = reader
         self.min_lines = 3
         self.random = random
-        self._poet_lines = Counter()
+        self._poet_lines = None
+        self._poet_templates = None
 
     def load_from_files(self):
         self._poet_templates = defaultdict(list)
+        self._poet_lines = Counter()
         self.random = random
 
         for poem in self.reader.read_classic_poems():

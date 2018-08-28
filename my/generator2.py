@@ -102,7 +102,9 @@ class Generator2:
         self.corpusw2v.load()
         self.log.info('Word2Vec ready')
         for w in self.ortho.words:
-            w.vector = self.corpusw2v.word_vector(w.lemma)
+            vector, vector_index = self.corpusw2v.word_vector_index(w.lemma)
+            w.vector = vector
+            w.vector_index = vector_index
         self.log.info('Word2Vec vectors applied to words')
         # Словарь слов-кандидатов по фонетическим формам: строится из набора данных SDSJ 2017
         self.stop_words = self.reader.read_stop_words()
@@ -219,7 +221,7 @@ class Generator2:
         return Seed(text,
                     seed_words,
                     seed_lemms,
-                    [self.corpusw2v.word_vector(l) for l in seed_lemms],
+                    [self.corpusw2v.word_vector_index(l) for l in seed_lemms],
                     self.corpusw2v.mean_vector(text),
                     [self.freq.freq(w) for w in seed_words])
 

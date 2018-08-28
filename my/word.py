@@ -26,6 +26,7 @@ class Word(object):
         self.lemma = None
         self.tag = None
         self.vector = None
+        self.vector_index = None
 
     def stressed(self) -> str:
         stressed = self.text[self.stressed_index]

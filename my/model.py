@@ -286,43 +286,43 @@ class Seed:
     text: str
     words: List[str] # cyrilic words
     lemms: List[str]
-    vectors: List[Optional[np.array]]
+    vector_indexies: List[Tuple[Optional[np.array], Optional[int]]]
     mean_vector: np.array
     frequencies: List[float]
 
     idfs: List[float]
-    weighted_vectors: List[Tuple[np.array, float, float]] # vector, idf, freq
+    weighted_vectors: List[Tuple[np.array, int, float, float]] # vector, vector_index, idf, freq
 
-    def __init__(self, text, words, lemms, vectors, mean_vector, frequencies):
+    def __init__(self, text, words, lemms, vector_indexies, mean_vector, frequencies):
         assert len(words) > 0
         assert len(words) == len(lemms)
-        assert len(words) == len(vectors)
+        assert len(words) == len(vector_indexies)
         assert len(words) == len(frequencies)
 
         self.text = text
         self.words = words
         self.lemms = lemms
-        self.vectors = vectors
+        self.vector_indexies = vector_indexies
         self.mean_vector = mean_vector
         self.frequencies = frequencies
         self.max_idf = log(1000000 / (0.0003))
         self.max_seed_words_count = 5
-        if len([v for v in self.vectors if v is not None]) > self.max_seed_words_count:
+        if len([vi for vi in self.vector_indexies if vi[0] is not None]) > self.max_seed_words_count:
             self._truncate_vector()
 
         self.weighted_vectors = []
         self.idfs = []
-        for v, ipm in zip(self.vectors, self.frequencies):
-            if v is not None and ipm > 0:
+        for vi, ipm in zip(self.vector_indexies, self.frequencies):
+            if vi[0] is not None and ipm > 0:
                 idf = log(1000000 / ipm)
                 self.idfs.append(idf)
-                self.weighted_vectors.append((v, idf, ipm))
+                self.weighted_vectors.append((vi[0], vi[1], idf, ipm))
 
     def _truncate_vector(self):
         selected_indexies = []
         selected_index_to_ipm = dict()
-        for i, (v, ipm) in enumerate(zip(self.vectors, self.frequencies)):
-            if v is not None and ipm > 0:
+        for i, (vi, ipm) in enumerate(zip(self.vector_indexies, self.frequencies)):
+            if vi[0] is not None and ipm > 0:
                 selected_index_to_ipm[i] = ipm
                 if len(selected_indexies) < self.max_seed_words_count:
                     selected_indexies.append(i)
@@ -337,16 +337,16 @@ class Seed:
                     if index_to_replace is not None:
                         selected_indexies.remove(index_to_replace)
                         selected_indexies.append(i)
-        vectors = []
+        vector_indexies = []
         frequencies = []
         words = []
         lemms = []
         for i in selected_indexies:
-            vectors.append(self.vectors[i])
+            vector_indexies.append(self.vector_indexies[i])
             frequencies.append(self.frequencies[i])
             words.append(self.words[i])
             lemms.append(self.lemms[i])
-        self.vectors = vectors
+        self.vector_indexies = vector_indexies
         self.frequencies = frequencies
         self.words = words
         self.lemms = lemms

@@ -13,7 +13,8 @@ import numpy as np
 import multiprocessing
 from gensim.models.callbacks import CallbackAny2Vec
 from gensim import utils, matutils
-from gensim.similarities.index import AnnoyIndexer
+from annoy import AnnoyIndex
+import time
 
 class CorpusW2v(object):
     def __init__(self, corpus: Corpus, reader: DataReader, vector_size: int = 100):
@@ -24,7 +25,8 @@ class CorpusW2v(object):
         self.model = Word2Vec(size=vector_size, window=5, min_count=5, workers=multiprocessing.cpu_count(),
                               max_final_vocab=100000, hs=1)
         self.helper = DataHelper(reader)
-        self.indexer = None
+        self.index = None
+        self.num_trees = 100
 
     def sentences(self, stemm: bool = False, lemmatize: bool = False) -> Iterator[Iterator[str]]:
         i = 0
@@ -49,9 +51,18 @@ class CorpusW2v(object):
                          end_alpha=min_alpha,
                          report_delay=60.0)
 
+    def init_index(self):
+        self.index = AnnoyIndex(self.model.vector_size, metric='angular')
+
     def build_save_indexer(self):
-        self.indexer = AnnoyIndexer(self.model, 300)
-        self.indexer.save(self.model_filepath + '.index', protocol=3)
+        start_time = time.time()
+        self.init_index()
+        #self.model.wv.vectors_norm, self.model.wv.index2word, self.model.vector_size
+        for vector_num, vector in enumerate(self.model.wv.vectors_norm):
+            self.index.add_item(vector_num, vector)
+        self.index.build(self.num_trees)
+        self.index.save(self.model_filepath + '.index')
+        print("Index built from %.1f seconds" % (time.time() - start_time))
 
     def save(self):
         self.model.save(self.model_filepath)
@@ -60,8 +71,8 @@ class CorpusW2v(object):
         self.model = Word2Vec.load(self.model_filepath)
         self.model.init_sims(replace=True)
         if os.path.exists(self.model_filepath + '.index'):
-            self.indexer = AnnoyIndexer()
-            self.indexer.load(self.model_filepath + '.index')
+            self.init_index()
+            self.index.load(self.model_filepath + '.index')
         return self
 
     def find_similar_words(self, words: List[str], stemmer: Callable[[str], str] = None, topn=1000) -> Iterator[str]:
@@ -72,7 +83,7 @@ class CorpusW2v(object):
             if word in self.model.wv:
                 word_in_corpus.append(word)
         if word_in_corpus:
-            for w, score in self.model.wv.most_similar(positive=word_in_corpus, topn=topn, indexer=self.indexer):
+            for w, score in self.model.wv.most_similar(positive=word_in_corpus, topn=topn):
                 yield w
 
     def accuracy(self) -> Tuple[float, Dict[str, Tuple[int, int]]]:
@@ -95,19 +106,12 @@ class CorpusW2v(object):
         if correct + incorrect > 0:
             return correct / (correct + incorrect)
 
-    def word_vector(self, lemm: str):
-        r =  self.model.wv.word_vec(lemm) if lemm in self.model.wv else None
-        return r
-
-    def text_vector(self, text: str, stemmer: Callable[[str], str] = None):
-        """Вектор текста, получается путем усреднения векторов всех слов в тексте"""
-        word_vectors = [
-            self.word_vector(lemm)
-            for lemm in [stemmer(token) for token in get_cyrillic_words(text.lower())]
-            if len(lemm) > 2 and not (lemm in self.stop_words)
-        ]
-        word_vectors = [vec for vec in word_vectors if vec is not None]
-        return np.mean(word_vectors, axis=0)
+    # vector, index
+    def word_vector_index(self, lemm: str) -> Tuple[Optional[np.array], Optional[int]]:
+        if lemm in self.model.wv:
+            return (self.model.wv.word_vec(lemm, use_norm=True), self.model.wv.vocab[lemm].index)
+        else:
+            return (None, None)
 
     def mean_vector(self, text: str):
         vectors = self.vectors(text)
@@ -132,33 +136,34 @@ class CorpusW2v(object):
         if isinstance(vec1, Seed):
             seed: Seed = vec1
             if strategy == 'min':
-                scores = [cosine(vec2, v) for v in seed.vectors if v is not None]
+                scores = [cosine_norm(vec2, vi[0]) for vi in seed.vector_indexies if vi[0] is not None]
                 if scores:
                     return min(scores)
                 else:
                     return 2
             elif strategy == 'mean':
-                scores = [cosine(vec2, v) for v in seed.vectors if v is not None]
+                scores = [cosine_norm(vec2, vi[0]) for vi in seed.vector_indexies if vi[0] is not None]
                 if scores:
                     return sum(scores) / len(scores)
                 else:
                     return 2
             elif strategy == 'min_idf':
                 if seed.weighted_vectors:
-                    vector, idf, freq = min(seed.weighted_vectors, key=lambda pair: cosine(vec2, pair[0]))
-                    return cosine(vec2, vector) / idf * 22 # max idf
+                    weighted_vectors_with_distances = [(t, cosine_norm(vec2, t[0])) for t in seed.weighted_vectors]
+                    (vector, vector_index, idf, freq), distance = min(weighted_vectors_with_distances, key=lambda pair:pair[1])
+                    return distance / idf * 22 # max idf
                 else:
                     return 2
             elif strategy == 'min_freq': # WORST in the worstests!!!!
                 if seed.weighted_vectors:
-                    vector, idf, freq = min(seed.weighted_vectors, key=lambda pair: cosine(vec2, pair[0]))
-                    return cosine(vec2, vector) * freq / 42329 # max freq
+                    vector, vector_index, idf, freq = min(seed.weighted_vectors, key=lambda pair: cosine_norm(vec2, pair[0]))
+                    return cosine_norm(vec2, vector) * freq / 42329 # max freq
                 else:
                     return 2
             elif strategy == 'mean_vector': # fastest
-                return cosine(vec2, seed.mean_vector)
+                return cosine_norm(vec2, seed.mean_vector)
         else:
-            r = cosine(vec1, vec2)
+            r = cosine_norm(vec1, vec2)
             return r
 
     @staticmethod
@@ -168,3 +173,6 @@ class CorpusW2v(object):
 
 def cosine(u, v):
     return 1.0 - np.average(u * v) / np.sqrt(np.average(np.square(u)) * np.average(np.square(v)))
+
+def cosine_norm(u, v):
+    return 1.0 - np.average(u * v) * 100 # don't know why not 1.0
