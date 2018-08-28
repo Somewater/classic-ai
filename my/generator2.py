@@ -87,7 +87,7 @@ class Generator2:
         self.results_queue = SimpleQueue()
         self.cpu_count = 2 # max(cpu_count(), 4)
         self.debug = False
-        self.w2v_distance_type = 'mean_vector'
+        self.w2v_distance_type = 'min_freq'
 
     def start(self):
         self.poems.load()
