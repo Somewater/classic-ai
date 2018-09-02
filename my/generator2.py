@@ -111,9 +111,9 @@ class Generator2:
         self._generate_word_by_form()
         self.log.info('Word by form ready')
         added_word_text = set()
-        for w in self.ortho.words:
-            self.tree.insert(w)
-            added_word_text.add(w.text)
+        # for w in self.ortho.words:
+        #     self.tree.insert(w)
+        #     added_word_text.add(w.text)
         #for word_text in self.freq.iterate_words():
         #    if not word_text in added_word_text:
         #        self.tree.insert(word_text)
