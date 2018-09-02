@@ -80,6 +80,7 @@ class Generator2:
         self.ortho = OrthoDict(self.freq)
         self.poems = ClassicPoems(self.reader, self.random)
         self.corpusw2v = CorpusW2v(WikiCorpus(self.reader, 'lemm'), self.reader)
+        self.corpusw2v.model_filepath = 'weights/5-2-3-4e-05-1-1_1M/wiki_w2v.bin'
         self.tree = TrieNode()
         self.morph = None
         self.started = False
