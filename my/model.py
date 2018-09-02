@@ -306,7 +306,7 @@ class Seed:
         self.mean_vector = mean_vector
         self.frequencies = frequencies
         self.max_idf = log(1000000 / (0.0003))
-        self.max_seed_words_count = 5
+        self.max_seed_words_count = 10
         if len([vi for vi in self.vector_indexies if vi[0] is not None]) > self.max_seed_words_count:
             self._truncate_vector()
 
