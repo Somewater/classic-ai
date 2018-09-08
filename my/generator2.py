@@ -80,7 +80,7 @@ class Generator2:
         self.ortho = OrthoDict(self.freq)
         self.poems = ClassicPoems(self.reader, self.random)
         self.corpusw2v = CorpusW2v(WikiCorpus(self.reader, 'lemm'), self.reader)
-        self.corpusw2v.model_filepath = 'weights/5-2-3-4e-05-1-1_1M/wiki_w2v.bin'
+        self.corpusw2v.model_filepath = '5-2-5-4e-05-1-1_1M/wiki_w2v.bin'
         self.tree = TrieNode()
         self.morph = None
         self.started = False
@@ -88,7 +88,7 @@ class Generator2:
         self.results_queue = SimpleQueue()
         self.cpu_count = 2 # max(cpu_count(), 4)
         self.debug = False
-        self.w2v_distance_type = 'min'
+        self.w2v_distance_type = 'min_idf'
 
     def start(self):
         self.poems.load()

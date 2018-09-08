@@ -26,6 +26,6 @@ if __name__ == '__main__':
         zip_files(zip, os.path.join(root_path, 'data'), ['stop_words.csv', 'ortho.pickle',
                                                          'frequency.pickle', 'frequency_tree.bin',
                                                          'frequency_lemms.pickle', 'frequency_tree_lemms.bin'])
-        zip_files(zip, os.path.join(root_path, 'weights/5-2-3-4e-05-1-1_1M'))
+        zip_files(zip, os.path.join(root_path, 'weights/5-2-5-4e-05-1-1_1M'))
         zip.write(os.path.join(root_path, 'my', 'metadata.json'), 'metadata.json')
         zip.write(os.path.join(root_path, 'server.py'), 'server.py')
